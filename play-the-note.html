@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Play The Note</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav">
+      <a href="index.html">← Back to utilities</a>
+    </nav>
+
+    <header>
+      <h1>Play The Note</h1>
+      <p>A note appears on the staff. Play it as fast as possible, then the next note appears.</p>
+    </header>
+
+    <section class="game-controls">
+      <div class="control-row">
+        <label for="ptn-tuning">Clarinet tuning</label>
+        <select id="ptn-tuning">
+          <option value="Bb">B♭ Clarinet (default)</option>
+          <option value="A">A Clarinet</option>
+          <option value="C">C Clarinet</option>
+        </select>
+      </div>
+
+      <div class="control-actions">
+        <button id="ptn-retry" type="button" hidden>Retry microphone</button>
+        <button id="ptn-stop" type="button" disabled>Stop</button>
+      </div>
+
+      <p id="ptn-status" class="status">Starting microphone...</p>
+    </section>
+
+    <section class="game-info">
+      <article class="game-card">
+        <h2>Hits</h2>
+        <p id="ptn-hits" class="big">0</p>
+      </article>
+      <article class="game-card">
+        <h2>Notes / Minute</h2>
+        <p id="ptn-npm" class="big">0.0</p>
+      </article>
+      <article class="game-card">
+        <h2>Last Reaction</h2>
+        <p id="ptn-reaction" class="big">-</p>
+      </article>
+    </section>
+
+    <section class="score-panel">
+      <h2>Target Note</h2>
+      <p class="muted">Play exactly this written note on your clarinet.</p>
+      <div id="ptn-score"></div>
+      <p id="ptn-note-label" class="muted"></p>
+    </section>
+  </main>
+
+  <script src="js/play-the-note.js"></script>
+</body>
+</html>
