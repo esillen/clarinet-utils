@@ -8,25 +8,39 @@
 </head>
 <body>
   <main class="page">
-    <header>
-      <h1>Clarinet Utilities</h1>
-      <p>Small practice tools for learning clarinet faster.</p>
-    </header>
+    <div id="main-workspace" class="workspace">
+      <header class="main-panel">
+        <h1>Clarinet Utilities</h1>
+        <p>Small practice tools for learning clarinet faster.</p>
+      </header>
 
-    <section class="card-grid">
-      <a class="card" href="alternate-fingerings.html">
-        <h2>Find Alternate Fingerings</h2>
-        <p>Listen to your clarinet note and show matching fingering options.</p>
-      </a>
-      <a class="card" href="play-after-me.html">
-        <h2>Play After Me</h2>
-        <p>Hear a phrase, repeat it on clarinet, and reveal your notes on the staff.</p>
-      </a>
-      <a class="card" href="play-the-note.html">
-        <h2>Play The Note</h2>
-        <p>Play the shown staff note as fast as possible and track notes per minute.</p>
-      </a>
-    </section>
+      <section class="controls main-panel">
+        <label for="global-tuning">Global clarinet tuning</label>
+        <select id="global-tuning">
+          <option value="Bb">B♭ Clarinet (default)</option>
+          <option value="A">A Clarinet</option>
+          <option value="C">C Clarinet</option>
+        </select>
+      </section>
+
+      <section class="card-grid main-panel">
+        <a class="card" href="alternate-fingerings.html">
+          <h2>Find Alternate Fingerings</h2>
+          <p>Listen to your clarinet note and show matching fingering options.</p>
+        </a>
+        <a class="card" href="play-after-me.html">
+          <h2>Play After Me</h2>
+          <p>Hear a phrase, repeat it on clarinet, and reveal your notes on the staff.</p>
+        </a>
+        <a class="card" href="play-the-note.html">
+          <h2>Play The Note</h2>
+          <p>Play the shown staff note as fast as possible and track notes per minute.</p>
+        </a>
+      </section>
+    </div>
   </main>
+  <script src="js/music-core.js"></script>
+  <script src="js/reorder-panels.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

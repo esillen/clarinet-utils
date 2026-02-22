@@ -1,23 +1,4 @@
-const STORAGE_KEY = "clarinet_tuning";
-
-const TUNING_OFFSETS = {
-  Bb: 2,
-  A: 3,
-  C: 0
-};
-
-const NOTE_NAMES_FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-
-const SCALES = {
-  C_MAJOR: { label: "C Major", root: 0, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  G_MAJOR: { label: "G Major", root: 7, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  D_MAJOR: { label: "D Major", root: 2, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  A_MAJOR: { label: "A Major", root: 9, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  F_MAJOR: { label: "F Major", root: 5, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  BB_MAJOR: { label: "B♭ Major", root: 10, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  A_MINOR: { label: "A Minor", root: 9, intervals: [0, 2, 3, 5, 7, 8, 10] },
-  CHROMATIC: { label: "Chromatic", root: 0, intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
-};
+const { TUNING_OFFSETS, SCALES } = window.ClarinetCore;
 
 const DIFFICULTY_PRESETS = {
   easy: {
@@ -46,7 +27,7 @@ const DIFFICULTY_PRESETS = {
   }
 };
 
-const tuningSelect = document.getElementById("game-tuning");
+const currentTuningEl = document.getElementById("pam-current-tuning");
 const scaleSelect = document.getElementById("scale-select");
 const difficultySelect = document.getElementById("difficulty-select");
 const customControls = document.getElementById("custom-controls");
@@ -73,10 +54,11 @@ let currentMode = "idle";
 let resolveRoundInput = null;
 let cancelRoundInput = null;
 let activeRoundToken = 0;
-let pitchHistory = [];
 let detectedSequence = [];
 let currentCandidate = null;
 let lastAcceptedAt = 0;
+let currentTuning = "Bb";
+const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -86,36 +68,15 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function midiToFreq(midi) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
-
-function freqToMidi(freq) {
-  return Math.round(69 + 12 * Math.log2(freq / 440));
-}
-
-function midiToName(midi) {
-  const octave = Math.floor(midi / 12) - 1;
-  const pitchClass = midi % 12;
-  return `${NOTE_NAMES_FLAT[pitchClass]}${octave}`;
-}
-
 function initializeTuning() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved && TUNING_OFFSETS[saved] !== undefined) {
-    tuningSelect.value = saved;
-  } else {
-    tuningSelect.value = "Bb";
-    localStorage.setItem(STORAGE_KEY, "Bb");
+  currentTuning = window.ClarinetCore.readTuning("Bb");
+  if (currentTuningEl) {
+    currentTuningEl.textContent = `Clarinet tuning: ${currentTuning}`;
   }
 }
 
 function updateDifficultyVisibility() {
   customControls.hidden = difficultySelect.value !== "custom";
-}
-
-function saveTuning() {
-  localStorage.setItem(STORAGE_KEY, tuningSelect.value);
 }
 
 function getDifficultyConfig() {
@@ -221,7 +182,7 @@ function renderPlaceholderScore() {
 }
 
 function noteYForStaff(midi, staffTop, spacing) {
-  const note = midiToName(midi);
+  const note = window.ClarinetCore.midiToName(midi, true);
   const pitch = note.slice(0, -1);
   const octave = Number(note.slice(-1));
   const map = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
@@ -239,7 +200,7 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false) {
   const right = width - 24;
   const staffTop = 78;
   const spacing = 8;
-  const tuningOffset = TUNING_OFFSETS[tuningSelect.value];
+  const tuningOffset = TUNING_OFFSETS[currentTuning];
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -331,75 +292,6 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false) {
   scoreOutput.appendChild(svg);
 }
 
-function autoCorrelate(buffer, sampleRate) {
-  const size = buffer.length;
-  let rms = 0;
-  for (let i = 0; i < size; i += 1) {
-    rms += buffer[i] * buffer[i];
-  }
-  rms = Math.sqrt(rms / size);
-  if (rms < 0.01) {
-    return -1;
-  }
-
-  let r1 = 0;
-  let r2 = size - 1;
-  const threshold = 0.2;
-
-  for (let i = 0; i < size / 2; i += 1) {
-    if (Math.abs(buffer[i]) < threshold) {
-      r1 = i;
-      break;
-    }
-  }
-
-  for (let i = 1; i < size / 2; i += 1) {
-    if (Math.abs(buffer[size - i]) < threshold) {
-      r2 = size - i;
-      break;
-    }
-  }
-
-  const sliced = buffer.slice(r1, r2);
-  const newSize = sliced.length;
-  const corr = new Array(newSize).fill(0);
-
-  for (let i = 0; i < newSize; i += 1) {
-    for (let j = 0; j < newSize - i; j += 1) {
-      corr[i] += sliced[j] * sliced[j + i];
-    }
-  }
-
-  let dip = 0;
-  while (dip + 1 < corr.length && corr[dip] > corr[dip + 1]) {
-    dip += 1;
-  }
-
-  let maxPos = -1;
-  let maxVal = -1;
-  for (let i = dip; i < corr.length; i += 1) {
-    if (corr[i] > maxVal) {
-      maxVal = corr[i];
-      maxPos = i;
-    }
-  }
-
-  if (maxPos <= 0) {
-    return -1;
-  }
-
-  return sampleRate / maxPos;
-}
-
-function getStablePitch(newPitch) {
-  pitchHistory.push(newPitch);
-  if (pitchHistory.length > 7) {
-    pitchHistory.shift();
-  }
-  const sorted = [...pitchHistory].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
-}
-
 function maybeAcceptDetectedNote(midi) {
   const now = performance.now();
 
@@ -435,10 +327,10 @@ function analysisLoop() {
   analyser.getFloatTimeDomainData(buffer);
 
   if (currentMode === "listening") {
-    const pitch = autoCorrelate(buffer, audioContext.sampleRate);
+    const pitch = window.PitchFinder.autoCorrelate(buffer, audioContext.sampleRate);
     if (pitch > 60 && pitch < 2100) {
-      const stable = getStablePitch(pitch);
-      const midi = freqToMidi(stable);
+      const stable = pitchSmoother.push(pitch);
+      const midi = window.ClarinetCore.freqToMidi(stable);
       maybeAcceptDetectedNote(midi);
     }
   }
@@ -502,7 +394,7 @@ async function playTone(midi, durationMs) {
   const gain = audioContext.createGain();
 
   oscillator.type = "triangle";
-  oscillator.frequency.value = midiToFreq(midi);
+  oscillator.frequency.value = window.ClarinetCore.midiToFreq(midi);
 
   gain.gain.setValueAtTime(0.0001, now);
   gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
@@ -530,7 +422,7 @@ async function playPrompt(concertPhrase, token) {
 
 function listenForPhrase(expectedLength, token) {
   currentMode = "listening";
-  pitchHistory = [];
+  pitchSmoother.clear();
   detectedSequence = [];
   currentCandidate = null;
   lastAcceptedAt = 0;
@@ -598,7 +490,7 @@ function sequencesMatch(expected, heard) {
 
 async function runRound(token) {
   const phraseWritten = generatePhrase();
-  const tuningOffset = TUNING_OFFSETS[tuningSelect.value];
+  const tuningOffset = TUNING_OFFSETS[currentTuning];
   const phraseConcert = phraseWritten.map((midi) => midi - tuningOffset);
 
   roundCounter += 1;
@@ -629,7 +521,7 @@ async function runRound(token) {
     : "Not quite. Next phrase coming...";
 
   const heardText = attempt.notes.length > 0
-    ? attempt.notes.map((midi) => midiToName(midi + tuningOffset)).join(" ")
+    ? attempt.notes.map((midi) => window.ClarinetCore.midiToName(midi + tuningOffset, true)).join(" ")
     : "(no stable notes detected)";
 
   heardNotesEl.textContent = `You played: ${heardText}`;
@@ -654,7 +546,6 @@ async function startGame() {
 
   startBtn.disabled = true;
   stopBtn.disabled = false;
-  tuningSelect.disabled = true;
   scaleSelect.disabled = true;
   difficultySelect.disabled = true;
   customControls.querySelectorAll("input").forEach((input) => {
@@ -692,7 +583,6 @@ function stopGame() {
 
   startBtn.disabled = false;
   stopBtn.disabled = true;
-  tuningSelect.disabled = false;
   scaleSelect.disabled = false;
   difficultySelect.disabled = false;
   customControls.querySelectorAll("input").forEach((input) => {
@@ -705,8 +595,14 @@ function stopGame() {
 function init() {
   initializeTuning();
   updateDifficultyVisibility();
+  if (window.initReorderableWorkspace) {
+    window.initReorderableWorkspace({
+      workspaceSelector: "#play-after-workspace",
+      itemSelector: ".utility-panel",
+      storageKey: "panel_order_play_after_me_v1"
+    });
+  }
 
-  tuningSelect.addEventListener("change", saveTuning);
   difficultySelect.addEventListener("change", updateDifficultyVisibility);
   startBtn.addEventListener("click", startGame);
   stopBtn.addEventListener("click", stopGame);

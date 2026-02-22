@@ -1,13 +1,4 @@
-const STORAGE_KEY = "clarinet_tuning";
-
-const TUNING_OFFSETS = {
-  Bb: 2,
-  A: 3,
-  C: 0
-};
-
-const NOTE_NAMES_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const NOTE_NAMES_FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+const { TUNING_OFFSETS } = window.ClarinetCore;
 
 const FINGERING_DB = {
   52: {
@@ -447,7 +438,7 @@ const FINGERING_DB = {
   }
 };
 
-const tuningSelect = document.getElementById("tuning-select");
+const currentTuningEl = document.getElementById("current-tuning");
 const retryBtn = document.getElementById("retry-btn");
 const stopBtn = document.getElementById("stop-btn");
 const micStatus = document.getElementById("mic-status");
@@ -459,145 +450,25 @@ const fingeringListEl = document.getElementById("fingering-list");
 const staffEl = document.getElementById("staff");
 const pitchCanvas = document.getElementById("pitch-canvas");
 const spectrumCanvas = document.getElementById("spectrum-canvas");
-const workspaceEl = document.getElementById("workspace");
 
 let audioContext = null;
 let analyser = null;
 let micStream = null;
 let rafId = null;
-let pitchHistory = [];
 let currentWrittenMidi = null;
 const TRACE_LENGTH = 260;
 const PITCH_MIDI_MIN = 48;
 const PITCH_MIDI_MAX = 96;
-const PANEL_SELECTOR = ".controls, .results, .pitch-visualizer, .spectrum-visualizer, .fingerings";
-const PANEL_ORDER_STORAGE_KEY = "clarinet_panel_order_v1";
 let pitchTrace = new Array(TRACE_LENGTH).fill(null);
 let frequencyBins = null;
-let panelsInitialized = false;
-let draggedPanelId = null;
+let currentTuning = "Bb";
+const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 
 function initializeTuning() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved && TUNING_OFFSETS[saved] !== undefined) {
-    tuningSelect.value = saved;
-  } else {
-    tuningSelect.value = "Bb";
-    localStorage.setItem(STORAGE_KEY, "Bb");
+  currentTuning = window.ClarinetCore.readTuning("Bb");
+  if (currentTuningEl) {
+    currentTuningEl.textContent = `Clarinet tuning: ${currentTuning}`;
   }
-}
-
-function saveTuning() {
-  localStorage.setItem(STORAGE_KEY, tuningSelect.value);
-  if (currentWrittenMidi !== null) {
-    renderFromMidi(currentWrittenMidi - TUNING_OFFSETS[tuningSelect.dataset.previous || tuningSelect.value]);
-  }
-  tuningSelect.dataset.previous = tuningSelect.value;
-}
-
-function midiToFreq(midi) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
-
-function freqToMidi(freq) {
-  return Math.round(69 + 12 * Math.log2(freq / 440));
-}
-
-function freqToMidiFloat(freq) {
-  return 69 + 12 * Math.log2(freq / 440);
-}
-
-function centsOff(freq, midi) {
-  return Math.round(1200 * Math.log2(freq / midiToFreq(midi)));
-}
-
-function midiToName(midi, preferFlats = true) {
-  const octave = Math.floor(midi / 12) - 1;
-  const pitchClass = midi % 12;
-  const names = preferFlats ? NOTE_NAMES_FLAT : NOTE_NAMES_SHARP;
-  return `${names[pitchClass]}${octave}`;
-}
-
-function getStablePitch(newPitch) {
-  pitchHistory.push(newPitch);
-  if (pitchHistory.length > 7) {
-    pitchHistory.shift();
-  }
-  const sorted = [...pitchHistory].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
-}
-
-function autoCorrelate(buffer, sampleRate) {
-  const SIZE = buffer.length;
-  let rms = 0;
-  for (let i = 0; i < SIZE; i += 1) {
-    const val = buffer[i];
-    rms += val * val;
-  }
-  rms = Math.sqrt(rms / SIZE);
-  if (rms < 0.01) {
-    return -1;
-  }
-
-  let r1 = 0;
-  let r2 = SIZE - 1;
-  const threshold = 0.2;
-
-  for (let i = 0; i < SIZE / 2; i += 1) {
-    if (Math.abs(buffer[i]) < threshold) {
-      r1 = i;
-      break;
-    }
-  }
-
-  for (let i = 1; i < SIZE / 2; i += 1) {
-    if (Math.abs(buffer[SIZE - i]) < threshold) {
-      r2 = SIZE - i;
-      break;
-    }
-  }
-
-  const sliced = buffer.slice(r1, r2);
-  const newSize = sliced.length;
-  const c = new Array(newSize).fill(0);
-
-  for (let i = 0; i < newSize; i += 1) {
-    for (let j = 0; j < newSize - i; j += 1) {
-      c[i] += sliced[j] * sliced[j + i];
-    }
-  }
-
-  let d = 0;
-  while (d + 1 < c.length && c[d] > c[d + 1]) {
-    d += 1;
-  }
-
-  let maxVal = -1;
-  let maxPos = -1;
-  for (let i = d; i < c.length; i += 1) {
-    if (c[i] > maxVal) {
-      maxVal = c[i];
-      maxPos = i;
-    }
-  }
-
-  if (maxPos <= 0) {
-    return -1;
-  }
-
-  let T0 = maxPos;
-  if (maxPos > 0 && maxPos < c.length - 1) {
-    const x1 = c[maxPos - 1];
-    const x2 = c[maxPos];
-    const x3 = c[maxPos + 1];
-    const a = (x1 + x3 - 2 * x2) / 2;
-    const b = (x3 - x1) / 2;
-    if (a !== 0) {
-      T0 -= b / (2 * a);
-    }
-  }
-
-  return sampleRate / T0;
 }
 
 function renderStaff(midi) {
@@ -609,7 +480,7 @@ function renderStaff(midi) {
   const stepPx = 7;
   const refStep = 4 * 7 + 2;
 
-  const noteName = midiToName(midi, true);
+  const noteName = window.ClarinetCore.midiToName(midi, true);
   const pitch = noteName.slice(0, -1);
   const octave = Number(noteName.slice(-1));
   const map = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
@@ -771,7 +642,7 @@ function renderPitchTrace() {
       ctx.fillStyle = "#6f8ba1";
       ctx.font = "11px 'Avenir Next', sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(midiToName(midi, true), 6, y + 3);
+      ctx.fillText(window.ClarinetCore.midiToName(midi, true), 6, y + 3);
     }
   }
 
@@ -815,7 +686,7 @@ function renderPitchTrace() {
 }
 
 function pushPitchTrace(freq) {
-  const midi = freq === null ? null : freqToMidiFloat(freq);
+  const midi = freq === null ? null : window.ClarinetCore.freqToMidiFloat(freq);
   pitchTrace.push(midi);
   if (pitchTrace.length > TRACE_LENGTH) {
     pitchTrace.shift();
@@ -891,140 +762,12 @@ function clearPitchTrace() {
   renderPitchTrace();
 }
 
-function readPanelOrder() {
-  const raw = localStorage.getItem(PANEL_ORDER_STORAGE_KEY);
-  if (!raw) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function savePanelOrder() {
-  if (!workspaceEl) {
-    return;
-  }
-  const order = Array.from(workspaceEl.querySelectorAll(PANEL_SELECTOR)).map((panel) => panel.dataset.panelId);
-  localStorage.setItem(PANEL_ORDER_STORAGE_KEY, JSON.stringify(order));
-}
-
-function findInsertionTarget(y) {
-  if (!workspaceEl) {
-    return null;
-  }
-  const panels = Array.from(workspaceEl.querySelectorAll(PANEL_SELECTOR)).filter(
-    (panel) => panel.dataset.panelId !== draggedPanelId
-  );
-  return panels.find((panel) => {
-    const rect = panel.getBoundingClientRect();
-    return y < rect.top + rect.height / 2;
-  }) || null;
-}
-
-function onHandleDragStart(event) {
-  const handle = event.target.closest(".drag-handle");
-  const panel = handle ? handle.closest(PANEL_SELECTOR) : null;
-  if (!panel) {
-    event.preventDefault();
-    return;
-  }
-
-  draggedPanelId = panel.dataset.panelId;
-  panel.classList.add("is-reordering");
-  event.dataTransfer.effectAllowed = "move";
-  event.dataTransfer.setData("text/plain", draggedPanelId);
-}
-
-function onWorkspaceDragOver(event) {
-  if (!draggedPanelId || !workspaceEl) {
-    return;
-  }
-  event.preventDefault();
-
-  const draggedPanel = workspaceEl.querySelector(`[data-panel-id="${draggedPanelId}"]`);
-  if (!draggedPanel) {
-    return;
-  }
-
-  const target = findInsertionTarget(event.clientY);
-  if (target && target !== draggedPanel) {
-    workspaceEl.insertBefore(draggedPanel, target);
-  } else if (!target) {
-    workspaceEl.appendChild(draggedPanel);
-  }
-}
-
-function onAnyDragEnd() {
-  if (!workspaceEl) {
-    draggedPanelId = null;
-    return;
-  }
-  workspaceEl.querySelectorAll(PANEL_SELECTOR).forEach((panel) => panel.classList.remove("is-reordering"));
-  if (draggedPanelId) {
-    savePanelOrder();
-  }
-  draggedPanelId = null;
-}
-
-function applySavedPanelOrder() {
-  if (!workspaceEl) {
-    return;
-  }
-  const order = readPanelOrder();
-  if (order.length === 0) {
-    return;
-  }
-  const panelsById = new Map(
-    Array.from(workspaceEl.querySelectorAll(PANEL_SELECTOR)).map((panel) => [panel.dataset.panelId, panel])
-  );
-  order.forEach((id) => {
-    const panel = panelsById.get(id);
-    if (panel) {
-      workspaceEl.appendChild(panel);
-    }
-  });
-}
-
-function setupReorderablePanels() {
-  if (!workspaceEl || panelsInitialized) {
-    return;
-  }
-
-  const panels = Array.from(workspaceEl.querySelectorAll(PANEL_SELECTOR));
-  panels.forEach((panel, index) => {
-    if (!panel.dataset.panelId) {
-      panel.dataset.panelId = panel.classList[0] || `panel-${index + 1}`;
-    }
-    panel.classList.add("reorderable-panel");
-
-    if (!panel.querySelector(".drag-handle")) {
-      const handle = document.createElement("div");
-      handle.className = "drag-handle";
-      handle.textContent = "Drag to Reorder";
-      handle.setAttribute("draggable", "true");
-      handle.addEventListener("dragstart", onHandleDragStart);
-      handle.addEventListener("dragend", onAnyDragEnd);
-      panel.insertBefore(handle, panel.firstChild);
-    }
-  });
-
-  applySavedPanelOrder();
-  workspaceEl.addEventListener("dragover", onWorkspaceDragOver);
-  workspaceEl.addEventListener("drop", (event) => event.preventDefault());
-  workspaceEl.addEventListener("dragend", onAnyDragEnd);
-  panelsInitialized = true;
-}
-
 function renderFingerings(writtenMidi) {
   const entry = FINGERING_DB[writtenMidi];
   fingeringListEl.innerHTML = "";
 
   if (!entry) {
-    fingeringNoteEl.textContent = `No fingering data in this tool for ${midiToName(writtenMidi, true)} yet.`;
+    fingeringNoteEl.textContent = `No fingering data in this tool for ${window.ClarinetCore.midiToName(writtenMidi, true)} yet.`;
     return;
   }
 
@@ -1055,19 +798,19 @@ function renderFingerings(writtenMidi) {
 }
 
 function renderFromMidi(concertMidi, detectedFrequency = null) {
-  const tuning = tuningSelect.value;
+  const tuning = currentTuning;
   const transpose = TUNING_OFFSETS[tuning];
   const writtenMidi = concertMidi + transpose;
   currentWrittenMidi = writtenMidi;
 
-  const concertLabel = midiToName(concertMidi, true);
-  const writtenLabel = midiToName(writtenMidi, true);
+  const concertLabel = window.ClarinetCore.midiToName(concertMidi, true);
+  const writtenLabel = window.ClarinetCore.midiToName(writtenMidi, true);
 
   concertNoteEl.textContent = concertLabel;
   writtenNoteEl.textContent = `${writtenLabel} (${tuning} clarinet)`;
 
   if (detectedFrequency) {
-    const cents = centsOff(detectedFrequency, concertMidi);
+    const cents = window.ClarinetCore.centsOff(detectedFrequency, concertMidi);
     const centsPrefix = cents > 0 ? "+" : "";
     concertFreqEl.textContent = `${detectedFrequency.toFixed(2)} Hz (${centsPrefix}${cents} cents)`;
   }
@@ -1088,11 +831,11 @@ function tickPitch() {
   }
   analyser.getByteFrequencyData(frequencyBins);
   renderSpectrumHistogram(audioContext.sampleRate);
-  const pitch = autoCorrelate(buffer, audioContext.sampleRate);
+  const pitch = window.PitchFinder.autoCorrelate(buffer, audioContext.sampleRate);
 
   if (pitch > 65 && pitch < 2100) {
-    const stable = getStablePitch(pitch);
-    const midi = freqToMidi(stable);
+    const stable = pitchSmoother.push(pitch);
+    const midi = window.ClarinetCore.freqToMidi(stable);
     renderFromMidi(midi, stable);
     pushPitchTrace(stable);
     micStatus.textContent = "Listening... keep a stable tone for best results.";
@@ -1129,7 +872,7 @@ async function startMicrophone() {
     stopBtn.disabled = false;
     micStatus.textContent = "Microphone started. Play a note.";
 
-    pitchHistory = [];
+    pitchSmoother.clear();
     clearPitchTrace();
     tickPitch();
   } catch (error) {
@@ -1166,10 +909,14 @@ function stopMicrophone() {
 
 function init() {
   initializeTuning();
-  tuningSelect.dataset.previous = tuningSelect.value;
-  setupReorderablePanels();
+  if (window.initReorderableWorkspace) {
+    window.initReorderableWorkspace({
+      workspaceSelector: "#workspace",
+      itemSelector: ".controls, .results, .pitch-visualizer, .spectrum-visualizer, .fingerings",
+      storageKey: "panel_order_alternate_fingerings_v1"
+    });
+  }
 
-  tuningSelect.addEventListener("change", saveTuning);
   retryBtn.addEventListener("click", startMicrophone);
   stopBtn.addEventListener("click", stopMicrophone);
   window.addEventListener("resize", () => {

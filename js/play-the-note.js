@@ -1,24 +1,6 @@
-const STORAGE_KEY = "clarinet_tuning";
+const { TUNING_OFFSETS, SCALES } = window.ClarinetCore;
 
-const TUNING_OFFSETS = {
-  Bb: 2,
-  A: 3,
-  C: 0
-};
-
-const NOTE_NAMES_FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-const SCALES = {
-  C_MAJOR: { root: 0, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  G_MAJOR: { root: 7, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  D_MAJOR: { root: 2, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  A_MAJOR: { root: 9, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  F_MAJOR: { root: 5, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  BB_MAJOR: { root: 10, intervals: [0, 2, 4, 5, 7, 9, 11] },
-  A_MINOR: { root: 9, intervals: [0, 2, 3, 5, 7, 8, 10] },
-  CHROMATIC: { root: 0, intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
-};
-
-const tuningSelect = document.getElementById("ptn-tuning");
+const currentTuningEl = document.getElementById("ptn-current-tuning");
 const scaleSelect = document.getElementById("ptn-scale");
 const regChalumeau = document.getElementById("reg-chalumeau");
 const regClarion = document.getElementById("reg-clarion");
@@ -36,7 +18,6 @@ let audioContext = null;
 let analyser = null;
 let micStream = null;
 let rafId = null;
-let pitchHistory = [];
 let targetWrittenMidi = null;
 let targetShownAt = 0;
 let hitCount = 0;
@@ -44,6 +25,8 @@ let runStartedAt = 0;
 let currentCandidate = null;
 let lastHitAt = 0;
 let isRunning = false;
+let currentTuning = "Bb";
+const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 const REGISTER_RANGES = {
   chalumeau: { min: 52, max: 64 },
   clarion: { min: 65, max: 79 },
@@ -51,99 +34,10 @@ const REGISTER_RANGES = {
 };
 
 function initializeTuning() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved && TUNING_OFFSETS[saved] !== undefined) {
-    tuningSelect.value = saved;
-  } else {
-    tuningSelect.value = "Bb";
-    localStorage.setItem(STORAGE_KEY, "Bb");
+  currentTuning = window.ClarinetCore.readTuning("Bb");
+  if (currentTuningEl) {
+    currentTuningEl.textContent = `Clarinet tuning: ${currentTuning}`;
   }
-}
-
-function saveTuning() {
-  localStorage.setItem(STORAGE_KEY, tuningSelect.value);
-  if (targetWrittenMidi !== null) {
-    renderTarget(targetWrittenMidi);
-  }
-}
-
-function midiToName(midi) {
-  const octave = Math.floor(midi / 12) - 1;
-  const pitchClass = midi % 12;
-  return `${NOTE_NAMES_FLAT[pitchClass]}${octave}`;
-}
-
-function freqToMidi(freq) {
-  return Math.round(69 + 12 * Math.log2(freq / 440));
-}
-
-function autoCorrelate(buffer, sampleRate) {
-  const size = buffer.length;
-  let rms = 0;
-  for (let i = 0; i < size; i += 1) {
-    rms += buffer[i] * buffer[i];
-  }
-  rms = Math.sqrt(rms / size);
-  if (rms < 0.01) {
-    return -1;
-  }
-
-  let r1 = 0;
-  let r2 = size - 1;
-  const threshold = 0.2;
-
-  for (let i = 0; i < size / 2; i += 1) {
-    if (Math.abs(buffer[i]) < threshold) {
-      r1 = i;
-      break;
-    }
-  }
-
-  for (let i = 1; i < size / 2; i += 1) {
-    if (Math.abs(buffer[size - i]) < threshold) {
-      r2 = size - i;
-      break;
-    }
-  }
-
-  const sliced = buffer.slice(r1, r2);
-  const newSize = sliced.length;
-  const corr = new Array(newSize).fill(0);
-
-  for (let i = 0; i < newSize; i += 1) {
-    for (let j = 0; j < newSize - i; j += 1) {
-      corr[i] += sliced[j] * sliced[j + i];
-    }
-  }
-
-  let dip = 0;
-  while (dip + 1 < corr.length && corr[dip] > corr[dip + 1]) {
-    dip += 1;
-  }
-
-  let maxPos = -1;
-  let maxVal = -1;
-  for (let i = dip; i < corr.length; i += 1) {
-    if (corr[i] > maxVal) {
-      maxVal = corr[i];
-      maxPos = i;
-    }
-  }
-
-  if (maxPos <= 0) {
-    return -1;
-  }
-
-  return sampleRate / maxPos;
-}
-
-function getStablePitch(newPitch) {
-  pitchHistory.push(newPitch);
-  if (pitchHistory.length > 7) {
-    pitchHistory.shift();
-  }
-  const sorted = [...pitchHistory].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
 }
 
 function getAllowedWrittenNotes() {
@@ -192,7 +86,7 @@ function randomTarget(previous = null) {
 }
 
 function noteYForStaff(midi, staffTop, spacing) {
-  const note = midiToName(midi);
+  const note = window.ClarinetCore.midiToName(midi, true);
   const pitch = note.slice(0, -1);
   const octave = Number(note.slice(-1));
   const map = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
@@ -281,7 +175,7 @@ function renderTarget(writtenMidi) {
 
   scoreEl.innerHTML = "";
   scoreEl.appendChild(svg);
-  noteLabelEl.textContent = `Target written note: ${midiToName(writtenMidi)} (${tuningSelect.value} clarinet)`;
+  noteLabelEl.textContent = `Target written note: ${window.ClarinetCore.midiToName(writtenMidi, true)} (${currentTuning} clarinet)`;
 }
 
 function setNextTarget() {
@@ -330,7 +224,7 @@ function checkMatch(concertMidi) {
     return;
   }
 
-  const writtenMidi = concertMidi + TUNING_OFFSETS[tuningSelect.value];
+  const writtenMidi = concertMidi + TUNING_OFFSETS[currentTuning];
   const now = performance.now();
 
   if (!currentCandidate || currentCandidate.midi !== writtenMidi) {
@@ -355,11 +249,11 @@ function tick() {
 
   const buffer = new Float32Array(analyser.fftSize);
   analyser.getFloatTimeDomainData(buffer);
-  const pitch = autoCorrelate(buffer, audioContext.sampleRate);
+  const pitch = window.PitchFinder.autoCorrelate(buffer, audioContext.sampleRate);
 
   if (pitch > 60 && pitch < 2100) {
-    const stable = getStablePitch(pitch);
-    const concertMidi = freqToMidi(stable);
+    const stable = pitchSmoother.push(pitch);
+    const concertMidi = window.ClarinetCore.freqToMidi(stable);
     checkMatch(concertMidi);
     statusEl.textContent = "Listening... play the target note quickly.";
   }
@@ -395,7 +289,7 @@ async function startMicrophone() {
     isRunning = true;
     runStartedAt = performance.now();
     hitCount = 0;
-    pitchHistory = [];
+    pitchSmoother.clear();
     reactionEl.textContent = "-";
     updateStats();
     setNextTarget();
@@ -433,9 +327,14 @@ function stopMicrophone() {
 
 function init() {
   initializeTuning();
-  saveTuning();
+  if (window.initReorderableWorkspace) {
+    window.initReorderableWorkspace({
+      workspaceSelector: "#play-note-workspace",
+      itemSelector: ".utility-panel",
+      storageKey: "panel_order_play_the_note_v1"
+    });
+  }
 
-  tuningSelect.addEventListener("change", saveTuning);
   scaleSelect.addEventListener("change", setNextTarget);
   [regChalumeau, regClarion, regAltissimo].forEach((input) => {
     input.addEventListener("change", () => {

@@ -19,12 +19,7 @@
 
     <div id="workspace" class="workspace">
       <section class="controls">
-        <label for="tuning-select">Clarinet tuning</label>
-        <select id="tuning-select">
-          <option value="Bb">B♭ Clarinet (default)</option>
-          <option value="A">A Clarinet</option>
-          <option value="C">C Clarinet</option>
-        </select>
+        <p id="current-tuning" class="status">Clarinet tuning: -</p>
         <button id="retry-btn" type="button" hidden>Retry microphone</button>
         <button id="stop-btn" type="button" disabled>Stop</button>
         <p id="mic-status" class="status">Starting microphone...</p>
@@ -64,6 +59,9 @@
     </div>
   </main>
 
+  <script src="js/music-core.js"></script>
+  <script src="js/pitch-detector.js"></script>
+  <script src="js/reorder-panels.js"></script>
   <script src="js/alternate-fingerings.js"></script>
 </body>
 </html>

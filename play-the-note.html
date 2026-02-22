@@ -17,14 +17,10 @@
       <p>A note appears on the staff. Play it as fast as possible, then the next note appears.</p>
     </header>
 
-    <section class="game-controls">
+    <div id="play-note-workspace" class="workspace">
+    <section class="game-controls utility-panel">
       <div class="control-row">
-        <label for="ptn-tuning">Clarinet tuning</label>
-        <select id="ptn-tuning">
-          <option value="Bb">B♭ Clarinet (default)</option>
-          <option value="A">A Clarinet</option>
-          <option value="C">C Clarinet</option>
-        </select>
+        <p id="ptn-current-tuning" class="status">Clarinet tuning: -</p>
       </div>
 
       <div class="control-row">
@@ -58,7 +54,7 @@
       <p id="ptn-status" class="status">Starting microphone...</p>
     </section>
 
-    <section class="game-info">
+    <section class="game-info utility-panel">
       <article class="game-card">
         <h2>Hits</h2>
         <p id="ptn-hits" class="big">0</p>
@@ -73,14 +69,18 @@
       </article>
     </section>
 
-    <section class="score-panel">
+    <section class="score-panel utility-panel">
       <h2>Target Note</h2>
       <p class="muted">Play exactly this written note on your clarinet.</p>
       <div id="ptn-score"></div>
       <p id="ptn-note-label" class="muted"></p>
     </section>
+    </div>
   </main>
 
+  <script src="js/music-core.js"></script>
+  <script src="js/pitch-detector.js"></script>
+  <script src="js/reorder-panels.js"></script>
   <script src="js/play-the-note.js"></script>
 </body>
 </html>

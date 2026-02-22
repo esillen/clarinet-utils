@@ -17,15 +17,9 @@
       <p>The browser plays a clarinet phrase. Repeat it, then your notes are revealed on the staff.</p>
     </header>
 
-    <section class="game-controls">
-      <div class="control-row">
-        <label for="game-tuning">Clarinet tuning</label>
-        <select id="game-tuning">
-          <option value="Bb">B♭ Clarinet (default)</option>
-          <option value="A">A Clarinet</option>
-          <option value="C">C Clarinet</option>
-        </select>
-      </div>
+    <div id="play-after-workspace" class="workspace">
+      <section class="game-controls utility-panel">
+      <p id="pam-current-tuning" class="status">Clarinet tuning: -</p>
 
       <div class="control-row">
         <label for="scale-select">Scale</label>
@@ -76,31 +70,35 @@
       </div>
 
       <p id="game-status" class="status">Press Start game to begin.</p>
-    </section>
+      </section>
 
-    <section class="game-info">
-      <article class="game-card">
-        <h2>Round</h2>
-        <p id="round-number" class="big">0</p>
-      </article>
-      <article class="game-card">
-        <h2>Last Speed</h2>
-        <p id="round-speed" class="big">-</p>
-      </article>
-      <article class="game-card">
-        <h2>Last Result</h2>
-        <p id="round-result" class="big">-</p>
-      </article>
-    </section>
+      <section class="game-info utility-panel">
+        <article class="game-card">
+          <h2>Round</h2>
+          <p id="round-number" class="big">0</p>
+        </article>
+        <article class="game-card">
+          <h2>Last Speed</h2>
+          <p id="round-speed" class="big">-</p>
+        </article>
+        <article class="game-card">
+          <h2>Last Result</h2>
+          <p id="round-result" class="big">-</p>
+        </article>
+      </section>
 
-    <section class="score-panel">
-      <h2>Revealed Score</h2>
-      <p class="muted">Notes are shown after your attempt.</p>
-      <div id="score-output"></div>
-      <p id="heard-notes" class="muted"></p>
-    </section>
+      <section class="score-panel utility-panel">
+        <h2>Revealed Score</h2>
+        <p class="muted">Notes are shown after your attempt.</p>
+        <div id="score-output"></div>
+        <p id="heard-notes" class="muted"></p>
+      </section>
+    </div>
   </main>
 
+  <script src="js/music-core.js"></script>
+  <script src="js/pitch-detector.js"></script>
+  <script src="js/reorder-panels.js"></script>
   <script src="js/play-after-me.js"></script>
 </body>
 </html>
