@@ -271,6 +271,20 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   font-size: 0.82rem;
 }
 
+.chart-note-preview {
+  margin: 0 0 0.35rem;
+}
+
+.chart-staff-svg {
+  display: block;
+  width: 100%;
+  max-width: 142px;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
 .chart-fingering-list {
   margin: 0;
   padding-left: 1rem;
@@ -293,7 +307,6 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   padding: 0.06rem 0.4rem;
 }
 
-.chart-fingering-keys,
 .chart-fingering-info {
   color: var(--muted);
 }
@@ -559,6 +572,14 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   .chart-entry > .muted {
     font-size: 0.72rem;
     margin: 0.26rem 0 0.26rem;
+  }
+
+  .chart-note-preview {
+    margin-bottom: 0.22rem;
+  }
+
+  .chart-staff-svg {
+    max-width: 110px;
   }
 
   .chart-fingering-list {
