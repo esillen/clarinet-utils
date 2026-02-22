@@ -24,7 +24,7 @@ body {
 }
 
 .page {
-  max-width: 960px;
+  max-width: 1220px;
   margin: 0 auto;
   padding: 1.25rem;
 }
@@ -104,6 +104,14 @@ button {
   font-family: inherit;
 }
 
+input[type="search"] {
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
 button {
   background: var(--accent);
   border-color: var(--accent);
@@ -124,26 +132,52 @@ button:disabled {
 
 .reorderable-panel {
   margin-top: 0 !important;
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
 }
 
 .drag-handle {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.5rem;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #f4fbf8;
   color: #0f4f3f;
-  font-size: 0.78rem;
-  font-weight: 700;
   cursor: move;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
   margin-bottom: 0.6rem;
 }
 
+.drag-grip {
+  width: 14px;
+  height: 14px;
+  opacity: 0.85;
+  background-image: radial-gradient(currentColor 1.4px, transparent 1.5px);
+  background-size: 6px 6px;
+  background-position: 0 0;
+}
+
 .reorderable-panel.is-reordering {
-  opacity: 0.62;
-  box-shadow: 0 12px 26px rgba(10, 34, 27, 0.18);
+  opacity: 0.96;
+  box-shadow: 0 18px 34px rgba(10, 34, 27, 0.25);
+  position: relative;
+  z-index: 18;
+  cursor: grabbing;
+}
+
+body.reordering-active {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body.reordering-active .reorderable-panel:not(.is-reordering) {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms ease, opacity 180ms ease;
 }
 
 .results {
@@ -191,6 +225,23 @@ button:disabled {
   gap: 0.75rem;
 }
 
+.chart-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.chart-entry {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #f9fcfb;
+}
+
+.chart-entry h3 {
+  margin-bottom: 0.3rem;
+}
+
 .fingering-card {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -204,6 +255,23 @@ button:disabled {
 
 .fingering-card p {
   margin-bottom: 0.35rem;
+}
+
+.fingering-visual {
+  margin: 0.55rem 0 0;
+}
+
+.fingering-visual img {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.fingering-visual figcaption {
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 
 .staff-svg {
@@ -304,6 +372,39 @@ button:disabled {
   max-width: none;
 }
 
+@media (min-width: 980px) {
+  #workspace {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+    gap: 1rem;
+  }
+
+  #workspace .controls,
+  #workspace .results,
+  #workspace .fingerings {
+    grid-column: 1 / -1;
+  }
+
+  #workspace .pitch-visualizer,
+  #workspace .spectrum-visualizer {
+    grid-column: span 1;
+  }
+
+  #play-after-workspace,
+  #play-note-workspace,
+  #fingering-chart-workspace {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+    gap: 1rem;
+  }
+
+  #play-after-workspace .score-panel,
+  #play-note-workspace .score-panel,
+  #fingering-chart-workspace .fingerings {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 620px) {
   .page {
     padding: 1rem;
@@ -314,12 +415,35 @@ button:disabled {
   }
 
   select,
-  button {
+  button,
+  input[type="search"] {
     width: 100%;
   }
 
   .control-row label {
     min-width: 0;
     width: 100%;
+  }
+
+  .game-info {
+    margin-top: 0.7rem;
+    gap: 0.45rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .game-card {
+    padding: 0.55rem;
+    border-radius: 10px;
+  }
+
+  .game-card h2 {
+    margin-bottom: 0.35rem;
+    font-size: 0.78rem;
+    line-height: 1.15;
+  }
+
+  .big {
+    font-size: 1.1rem;
+    line-height: 1.05;
   }
 }

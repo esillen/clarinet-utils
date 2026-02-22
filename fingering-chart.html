@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fingering Chart</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav">
+      <a href="index.html">← Back to utilities</a>
+    </nav>
+
+    <header>
+      <h1>Fingering Chart</h1>
+      <p>Look up standard, alternate, and trill fingerings for written clarinet notes.</p>
+    </header>
+
+    <div id="fingering-chart-workspace" class="workspace">
+      <section class="controls utility-panel">
+        <p id="chart-tuning" class="status">Clarinet tuning: -</p>
+        <label for="chart-note-filter">Written note</label>
+        <select id="chart-note-filter">
+          <option value="all">All notes</option>
+        </select>
+
+        <label for="chart-type-filter">Fingering type</label>
+        <select id="chart-type-filter">
+          <option value="all">All types</option>
+          <option value="Primary">Primary</option>
+          <option value="Alternate">Alternate</option>
+          <option value="Trill">Trill</option>
+        </select>
+
+        <label for="chart-search">Search</label>
+        <input id="chart-search" type="search" placeholder="Note, key combo, or info">
+      </section>
+
+      <section class="fingerings utility-panel">
+        <h2>Fingerings</h2>
+        <p id="chart-summary" class="muted"></p>
+        <p id="chart-visual-refs" class="muted"></p>
+        <div id="chart-results" class="chart-results"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/music-core.js"></script>
+  <script src="js/fingering-db.js"></script>
+  <script src="js/reorder-panels.js"></script>
+  <script src="js/fingering-chart.js"></script>
+</body>
+</html>

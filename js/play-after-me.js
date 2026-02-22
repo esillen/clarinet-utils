@@ -4,32 +4,36 @@ const DIFFICULTY_PRESETS = {
   easy: {
     minNotes: 3,
     maxNotes: 5,
-    minMidi: 67,
-    maxMidi: 84,
     maxJump: 2,
     jumpBias: "small"
   },
   medium: {
     minNotes: 5,
     maxNotes: 7,
-    minMidi: 67,
-    maxMidi: 91,
     maxJump: 5,
     jumpBias: "mixed"
   },
   hard: {
     minNotes: 7,
     maxNotes: 10,
-    minMidi: 67,
-    maxMidi: 95,
     maxJump: 8,
     jumpBias: "large"
   }
 };
 
+const REGISTER_RANGES = {
+  chalumeau: { min: 52, max: 64 },
+  clarion: { min: 65, max: 79 },
+  altissimo: { min: 80, max: 96 }
+};
+
 const currentTuningEl = document.getElementById("pam-current-tuning");
 const scaleSelect = document.getElementById("scale-select");
 const difficultySelect = document.getElementById("difficulty-select");
+const regChalumeau = document.getElementById("pam-reg-chalumeau");
+const regClarion = document.getElementById("pam-reg-clarion");
+const regAltissimo = document.getElementById("pam-reg-altissimo");
+const revealFirstNote = document.getElementById("reveal-first-note");
 const customControls = document.getElementById("custom-controls");
 const customCount = document.getElementById("custom-count");
 const customMin = document.getElementById("custom-min");
@@ -99,24 +103,47 @@ function getDifficultyConfig() {
   };
 }
 
-function getScalePool(scaleKey, minMidi, maxMidi) {
-  const scale = SCALES[scaleKey];
-  const allowedPitchClasses = new Set(scale.intervals.map((interval) => (scale.root + interval) % 12));
+function getRegisterPool() {
   const pool = [];
-
-  for (let midi = minMidi; midi <= maxMidi; midi += 1) {
-    if (allowedPitchClasses.has((midi + 1200) % 12)) {
-      pool.push(midi);
-    }
-  }
-
-  if (pool.length < 3) {
+  const addRange = (minMidi, maxMidi) => {
     for (let midi = minMidi; midi <= maxMidi; midi += 1) {
       pool.push(midi);
     }
+  };
+
+  if (regChalumeau.checked) {
+    addRange(REGISTER_RANGES.chalumeau.min, REGISTER_RANGES.chalumeau.max);
+  }
+  if (regClarion.checked) {
+    addRange(REGISTER_RANGES.clarion.min, REGISTER_RANGES.clarion.max);
+  }
+  if (regAltissimo.checked) {
+    addRange(REGISTER_RANGES.altissimo.min, REGISTER_RANGES.altissimo.max);
   }
 
-  return pool;
+  return [...new Set(pool)].sort((a, b) => a - b);
+}
+
+function getSelectableNotePool(config) {
+  const registerPool = getRegisterPool();
+  if (registerPool.length === 0) {
+    return [];
+  }
+
+  let candidatePool = registerPool;
+  if (difficultySelect.value === "custom") {
+    candidatePool = registerPool.filter((midi) => midi >= config.minMidi && midi <= config.maxMidi);
+  }
+
+  if (candidatePool.length === 0) {
+    return [];
+  }
+
+  const scale = SCALES[scaleSelect.value];
+  const allowedPitchClasses = new Set(scale.intervals.map((interval) => (scale.root + interval) % 12));
+  const scaleFiltered = candidatePool.filter((midi) => allowedPitchClasses.has((midi + 1200) % 12));
+
+  return scaleFiltered.length > 0 ? scaleFiltered : candidatePool;
 }
 
 function pickNextIndex(currentIndex, poolLength, config) {
@@ -158,7 +185,7 @@ function pickNextIndex(currentIndex, poolLength, config) {
 
 function generatePhrase() {
   const config = getDifficultyConfig();
-  const pool = getScalePool(scaleSelect.value, config.minMidi, config.maxMidi);
+  const pool = getSelectableNotePool(config);
   const phraseLength = randomInt(config.minNotes, config.maxNotes);
 
   if (pool.length === 0) {
@@ -190,16 +217,18 @@ function noteYForStaff(midi, staffTop, spacing) {
   const diatonic = octave * 7 + map[letter];
   const ref = 4 * 7 + 2;
   const step = diatonic - ref;
-  return staffTop + 4 * spacing - step * (spacing / 2);
+  const slot = spacing / 2;
+  const rawY = staffTop + 4 * spacing - step * slot;
+  return Math.round(rawY / slot) * slot;
 }
 
-function renderScore(expectedWritten, playedConcert = [], reveal = false) {
+function renderScore(expectedWritten, playedConcert = [], reveal = false, revealFirst = false) {
   const width = Math.max(400, 130 + expectedWritten.length * 62);
   const height = 210;
   const left = 52;
   const right = width - 24;
   const staffTop = 78;
-  const spacing = 8;
+  const spacing = 9;
   const tuningOffset = TUNING_OFFSETS[currentTuning];
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -232,6 +261,11 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false) {
     const y = noteYForStaff(midi, staffTop, spacing);
     const playedWritten = playedConcert[index] !== undefined ? playedConcert[index] + tuningOffset : null;
     const correct = playedWritten !== null && Math.abs(playedWritten - midi) <= 0;
+    const showPreReveal = !reveal && revealFirst && index === 0;
+
+    if (!reveal && !showPreReveal) {
+      return;
+    }
 
     const ledgerYs = [];
     if (y < staffTop - spacing / 2) {
@@ -255,26 +289,14 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false) {
       svg.appendChild(ledger);
     });
 
-    if (!reveal) {
-      const hiddenHead = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-      hiddenHead.setAttribute("cx", String(x));
-      hiddenHead.setAttribute("cy", String(y));
-      hiddenHead.setAttribute("rx", "9");
-      hiddenHead.setAttribute("ry", "6.5");
-      hiddenHead.setAttribute("fill", "#dbe9e4");
-      hiddenHead.setAttribute("stroke", "#98b9ae");
-      hiddenHead.setAttribute("stroke-width", "1");
-      svg.appendChild(hiddenHead);
-      return;
-    }
-
     const head = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
     head.setAttribute("cx", String(x));
     head.setAttribute("cy", String(y));
     head.setAttribute("rx", "9");
     head.setAttribute("ry", "6.5");
     head.setAttribute("transform", `rotate(-20 ${x} ${y})`);
-    head.setAttribute("fill", correct ? "#0f7c62" : "#c23f4d");
+    const fillColor = reveal ? (correct ? "#0f7c62" : "#c23f4d") : "#10634f";
+    head.setAttribute("fill", fillColor);
     svg.appendChild(head);
 
     const stem = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -283,7 +305,7 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false) {
     stem.setAttribute("x2", String(stemUp ? x + 8 : x - 8));
     stem.setAttribute("y1", String(y));
     stem.setAttribute("y2", String(stemUp ? y - 30 : y + 30));
-    stem.setAttribute("stroke", correct ? "#0f7c62" : "#c23f4d");
+    stem.setAttribute("stroke", fillColor);
     stem.setAttribute("stroke-width", "1.4");
     svg.appendChild(stem);
   });
@@ -490,6 +512,11 @@ function sequencesMatch(expected, heard) {
 
 async function runRound(token) {
   const phraseWritten = generatePhrase();
+  if (phraseWritten.length === 0) {
+    gameStatus.textContent = "No notes available with current range/scale settings.";
+    return;
+  }
+
   const tuningOffset = TUNING_OFFSETS[currentTuning];
   const phraseConcert = phraseWritten.map((midi) => midi - tuningOffset);
 
@@ -498,7 +525,7 @@ async function runRound(token) {
   roundResultEl.textContent = "-";
   roundSpeedEl.textContent = "-";
   heardNotesEl.textContent = "";
-  renderScore(phraseWritten, [], false);
+  renderScore(phraseWritten, [], false, revealFirstNote.checked);
 
   await playPrompt(phraseConcert, token);
   if (!gameRunning || token !== activeRoundToken) {
@@ -525,11 +552,17 @@ async function runRound(token) {
     : "(no stable notes detected)";
 
   heardNotesEl.textContent = `You played: ${heardText}`;
-  renderScore(phraseWritten, attempt.notes, true);
+  renderScore(phraseWritten, attempt.notes, true, false);
 }
 
 async function startGame() {
   if (gameRunning) {
+    return;
+  }
+
+  const preflightPool = getSelectableNotePool(getDifficultyConfig());
+  if (preflightPool.length === 0) {
+    gameStatus.textContent = "Select at least one register (and matching scale/custom range).";
     return;
   }
 
@@ -548,6 +581,10 @@ async function startGame() {
   stopBtn.disabled = false;
   scaleSelect.disabled = true;
   difficultySelect.disabled = true;
+  regChalumeau.disabled = true;
+  regClarion.disabled = true;
+  regAltissimo.disabled = true;
+  revealFirstNote.disabled = true;
   customControls.querySelectorAll("input").forEach((input) => {
     input.disabled = true;
   });
@@ -585,6 +622,10 @@ function stopGame() {
   stopBtn.disabled = true;
   scaleSelect.disabled = false;
   difficultySelect.disabled = false;
+  regChalumeau.disabled = false;
+  regClarion.disabled = false;
+  regAltissimo.disabled = false;
+  revealFirstNote.disabled = false;
   customControls.querySelectorAll("input").forEach((input) => {
     input.disabled = false;
   });

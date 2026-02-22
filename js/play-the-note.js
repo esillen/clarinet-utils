@@ -94,7 +94,9 @@ function noteYForStaff(midi, staffTop, spacing) {
   const diatonic = octave * 7 + map[letter];
   const ref = 4 * 7 + 2;
   const step = diatonic - ref;
-  return staffTop + 4 * spacing - step * (spacing / 2);
+  const slot = spacing / 2;
+  const rawY = staffTop + 4 * spacing - step * slot;
+  return Math.round(rawY / slot) * slot;
 }
 
 function renderTarget(writtenMidi) {
@@ -103,7 +105,7 @@ function renderTarget(writtenMidi) {
   const left = 52;
   const right = width - 24;
   const staffTop = 78;
-  const spacing = 8;
+  const spacing = 9;
   const x = 215;
   const y = noteYForStaff(writtenMidi, staffTop, spacing);
 
