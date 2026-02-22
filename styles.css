@@ -133,14 +133,19 @@ button:disabled {
 .reorderable-panel {
   margin-top: 0 !important;
   transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+  position: relative;
 }
 
 .drag-handle {
+  position: absolute;
+  left: -14px;
+  top: 14px;
+  z-index: 12;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 30px;
-  height: 26px;
+  height: 78px;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -151,7 +156,7 @@ button:disabled {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
-  margin-bottom: 0.6rem;
+  margin: 0;
 }
 
 .drag-grip {
@@ -197,6 +202,23 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   margin-bottom: 0.5rem;
 }
 
+.note-pair-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  align-items: end;
+}
+
+.note-pair-item p.muted {
+  margin-bottom: 0.2rem;
+}
+
+.note-pair-item #concert-note,
+.note-pair-item #written-note {
+  margin-bottom: 0;
+  font-size: 1.55rem;
+}
+
 #pitch-canvas {
   width: 100%;
   height: 240px;
@@ -226,20 +248,54 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
 }
 
 .chart-results {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.6rem;
 }
 
 .chart-entry {
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 0.8rem;
+  padding: 0.45rem 0.55rem;
   background: #f9fcfb;
 }
 
-.chart-entry h3 {
-  margin-bottom: 0.3rem;
+.chart-entry-summary {
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.93rem;
+}
+
+.chart-entry > .muted {
+  margin: 0.42rem 0 0.4rem;
+  font-size: 0.82rem;
+}
+
+.chart-fingering-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.chart-fingering-item {
+  font-size: 0.82rem;
+  line-height: 1.28;
+}
+
+.chart-fingering-type {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  background: #eef7f3;
+  border-radius: 999px;
+  padding: 0.06rem 0.4rem;
+}
+
+.chart-fingering-keys,
+.chart-fingering-info {
+  color: var(--muted);
 }
 
 .fingering-card {
@@ -255,6 +311,27 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
 
 .fingering-card p {
   margin-bottom: 0.35rem;
+}
+
+.fingering-card-compact {
+  padding: 0.55rem 0.6rem;
+}
+
+.fingering-card-compact h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.fingering-card-compact p {
+  margin-bottom: 0.25rem;
+  font-size: 0.84rem;
+  line-height: 1.26;
+}
+
+.fingering-guide-link {
+  margin: 0.24rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .fingering-visual {
@@ -445,5 +522,79 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   .big {
     font-size: 1.1rem;
     line-height: 1.05;
+  }
+
+  .drag-handle {
+    left: -10px;
+    top: 10px;
+    width: 28px;
+    height: 72px;
+  }
+
+  .note-pair-row {
+    gap: 0.5rem;
+  }
+
+  .note-pair-item #concert-note,
+  .note-pair-item #written-note {
+    font-size: 1.18rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .chart-results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .chart-entry {
+    padding: 0.4rem 0.45rem;
+  }
+
+  .chart-entry-summary {
+    font-size: 0.79rem;
+    line-height: 1.2;
+  }
+
+  .chart-entry > .muted {
+    font-size: 0.72rem;
+    margin: 0.26rem 0 0.26rem;
+  }
+
+  .chart-fingering-list {
+    gap: 0.22rem;
+    padding-left: 0.9rem;
+  }
+
+  .chart-fingering-item {
+    font-size: 0.72rem;
+    line-height: 1.18;
+  }
+
+  .chart-fingering-type {
+    font-size: 0.66rem;
+    padding: 0.04rem 0.3rem;
+  }
+
+  .fingering-list {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+  }
+
+  .fingering-card-compact {
+    padding: 0.48rem 0.52rem;
+  }
+
+  .fingering-card-compact h3 {
+    font-size: 0.9rem;
+  }
+
+  .fingering-card-compact p {
+    font-size: 0.78rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .fingering-guide-link {
+    font-size: 0.74rem;
   }
 }

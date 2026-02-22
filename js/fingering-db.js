@@ -450,9 +450,18 @@ const FINGERING_DB = {
   }
 };
 
-  function renderFingeringCard(fingering) {
+  function getVisualGuide(type) {
+    return type === "Trill" ? FINGERING_VISUALS.publicDomainChart : FINGERING_VISUALS.template;
+  }
+
+  function renderFingeringCard(fingering, options = {}) {
+    const compact = Boolean(options.compact);
+    const showVisual = options.showVisual !== false;
     const card = document.createElement("article");
     card.className = "fingering-card";
+    if (compact) {
+      card.classList.add("fingering-card-compact");
+    }
 
     const title = document.createElement("h3");
     title.textContent = fingering.name;
@@ -466,29 +475,36 @@ const FINGERING_DB = {
     const info = document.createElement("p");
     info.innerHTML = `<strong>Info:</strong> ${fingering.info}`;
 
-    const visual = document.createElement("figure");
-    visual.className = "fingering-visual";
-
-    const visualGuide = fingering.type === "Trill"
-      ? FINGERING_VISUALS.publicDomainChart
-      : FINGERING_VISUALS.template;
-
-    const image = document.createElement("img");
-    image.src = visualGuide.imageUrl;
-    image.alt = `${fingering.name} fingering visual guide`;
-    image.loading = "lazy";
-
-    const caption = document.createElement("figcaption");
-    caption.innerHTML = `Visual guide: <a href="${visualGuide.sourceUrl}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (${visualGuide.license}).`;
-
-    visual.appendChild(image);
-    visual.appendChild(caption);
-
     card.appendChild(title);
     card.appendChild(type);
     card.appendChild(keys);
     card.appendChild(info);
-    card.appendChild(visual);
+
+    if (showVisual) {
+      const visualGuide = getVisualGuide(fingering.type);
+      if (compact) {
+        const guide = document.createElement("p");
+        guide.className = "fingering-guide-link";
+        guide.innerHTML = `Guide: <a href="${visualGuide.sourceUrl}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (${visualGuide.license}).`;
+        card.appendChild(guide);
+      } else {
+        const visual = document.createElement("figure");
+        visual.className = "fingering-visual";
+
+        const image = document.createElement("img");
+        image.src = visualGuide.imageUrl;
+        image.alt = `${fingering.name} fingering visual guide`;
+        image.loading = "lazy";
+
+        const caption = document.createElement("figcaption");
+        caption.innerHTML = `Visual guide: <a href="${visualGuide.sourceUrl}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (${visualGuide.license}).`;
+
+        visual.appendChild(image);
+        visual.appendChild(caption);
+        card.appendChild(visual);
+      }
+    }
+
     return card;
   }
 

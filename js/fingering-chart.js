@@ -46,24 +46,36 @@ function matchesSearch(entry, fingering, query) {
 }
 
 function renderEntry(entry, fingerings) {
-  const group = document.createElement("section");
+  const group = document.createElement("details");
   group.className = "chart-entry";
+  if (noteFilterEl.value !== "all") {
+    group.open = true;
+  }
 
-  const title = document.createElement("h3");
-  title.textContent = `${entry.noteLabel} written (${window.ClarinetCore.midiToName(entry.writtenMidi, true)})`;
+  const summary = document.createElement("summary");
+  summary.className = "chart-entry-summary";
+  summary.textContent = `${entry.noteLabel} · concert ${getConcertNoteLabel(entry.writtenMidi)} · ${fingerings.length} fingering(s)`;
 
   const subtitle = document.createElement("p");
   subtitle.className = "muted";
-  subtitle.textContent = `Concert pitch on ${currentTuning} clarinet: ${getConcertNoteLabel(entry.writtenMidi)}. ${fingerings.length} fingering option(s).`;
+  subtitle.textContent = `${entry.noteLabel} written (${window.ClarinetCore.midiToName(entry.writtenMidi, true)})`;
 
-  const list = document.createElement("div");
-  list.className = "fingering-list";
+  const list = document.createElement("ul");
+  list.className = "chart-fingering-list";
 
   fingerings.forEach((fingering) => {
-    list.appendChild(window.ClarinetFingerings.renderFingeringCard(fingering));
+    const item = document.createElement("li");
+    item.className = "chart-fingering-item";
+    item.innerHTML = [
+      `<span class="chart-fingering-type">${fingering.type}</span>`,
+      `<strong>${fingering.name}</strong>`,
+      `<span class="chart-fingering-keys">${fingering.keys}</span>`,
+      `<span class="chart-fingering-info">${fingering.info}</span>`
+    ].join(" · ");
+    list.appendChild(item);
   });
 
-  group.appendChild(title);
+  group.appendChild(summary);
   group.appendChild(subtitle);
   group.appendChild(list);
   return group;
@@ -114,14 +126,6 @@ function init() {
   noteFilterEl.addEventListener("change", render);
   typeFilterEl.addEventListener("change", render);
   searchEl.addEventListener("input", render);
-
-  if (window.initReorderableWorkspace) {
-    window.initReorderableWorkspace({
-      workspaceSelector: "#fingering-chart-workspace",
-      itemSelector: ".utility-panel",
-      storageKey: "panel_order_fingering_chart_v1"
-    });
-  }
 
   render();
 }

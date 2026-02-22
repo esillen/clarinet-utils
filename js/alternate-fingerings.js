@@ -341,7 +341,7 @@ function renderFingerings(writtenMidi) {
   fingeringNoteEl.textContent = `Showing ${entry.fingerings.length} fingering option(s) for ${entry.noteLabel}.`;
 
   entry.fingerings.forEach((fingering) => {
-    fingeringListEl.appendChild(renderFingeringCard(fingering));
+    fingeringListEl.appendChild(renderFingeringCard(fingering, { compact: true, showVisual: true }));
   });
 
   if (fingeringVisualRefsEl) {
@@ -359,7 +359,7 @@ function renderFromMidi(concertMidi, detectedFrequency = null) {
   const writtenLabel = window.ClarinetCore.midiToName(writtenMidi, true);
 
   concertNoteEl.textContent = concertLabel;
-  writtenNoteEl.textContent = `${writtenLabel} (${tuning} clarinet)`;
+  writtenNoteEl.textContent = writtenLabel;
 
   if (detectedFrequency) {
     const cents = window.ClarinetCore.centsOff(detectedFrequency, concertMidi);

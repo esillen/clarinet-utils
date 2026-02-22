@@ -25,16 +25,31 @@
         <p id="mic-status" class="status">Starting microphone...</p>
       </section>
 
+      <section class="fingerings">
+        <h2>Fingerings for this written note</h2>
+        <p id="fingering-note" class="muted">Play a steady pitch to see options.</p>
+        <p id="fingering-visual-refs" class="muted"></p>
+        <div id="fingering-list" class="fingering-list"></div>
+      </section>
+
       <section class="results">
         <article class="result-card">
-          <h2>Detected Concert Pitch</h2>
-          <p id="concert-note">-</p>
+          <h2>Detected / Written Note</h2>
+          <div class="note-pair-row">
+            <div class="note-pair-item">
+              <p class="muted">Concert</p>
+              <p id="concert-note">-</p>
+            </div>
+            <div class="note-pair-item">
+              <p class="muted">Written</p>
+              <p id="written-note">-</p>
+            </div>
+          </div>
           <p id="concert-freq" class="muted"></p>
         </article>
 
         <article class="result-card">
-          <h2>Written Clarinet Note (Treble Clef)</h2>
-          <p id="written-note">-</p>
+          <h2>Written Clarinet Note On Treble Clef</h2>
           <div id="staff"></div>
         </article>
       </section>
@@ -49,13 +64,6 @@
         <h2>Live Spectrum Histogram</h2>
         <p class="muted">Full FFT spectrum from 0 Hz to Nyquist.</p>
         <canvas id="spectrum-canvas" width="920" height="220" aria-label="Live spectrum histogram"></canvas>
-      </section>
-
-      <section class="fingerings">
-        <h2>Fingerings for this written note</h2>
-        <p id="fingering-note" class="muted">Play a steady pitch to see options.</p>
-        <p id="fingering-visual-refs" class="muted"></p>
-        <div id="fingering-list" class="fingering-list"></div>
       </section>
     </div>
   </main>
