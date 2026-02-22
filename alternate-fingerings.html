@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find Alternate Fingerings</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav">
+      <a href="index.html">← Back to utilities</a>
+    </nav>
+
+    <header>
+      <h1>Find Alternate Fingerings</h1>
+      <p>Play a note, and this tool detects the pitch and shows clarinet fingerings for that written note.</p>
+    </header>
+
+    <div id="workspace" class="workspace">
+      <section class="controls">
+        <label for="tuning-select">Clarinet tuning</label>
+        <select id="tuning-select">
+          <option value="Bb">B♭ Clarinet (default)</option>
+          <option value="A">A Clarinet</option>
+          <option value="C">C Clarinet</option>
+        </select>
+        <button id="retry-btn" type="button" hidden>Retry microphone</button>
+        <button id="stop-btn" type="button" disabled>Stop</button>
+        <p id="mic-status" class="status">Starting microphone...</p>
+      </section>
+
+      <section class="results">
+        <article class="result-card">
+          <h2>Detected Concert Pitch</h2>
+          <p id="concert-note">-</p>
+          <p id="concert-freq" class="muted"></p>
+        </article>
+
+        <article class="result-card">
+          <h2>Written Clarinet Note (Treble Clef)</h2>
+          <p id="written-note">-</p>
+          <div id="staff"></div>
+        </article>
+      </section>
+
+      <section class="pitch-visualizer">
+        <h2>Live Pitch Display</h2>
+        <p class="muted">Scrolling pitch trace (log scale by semitone/MIDI), left to right.</p>
+        <canvas id="pitch-canvas" width="920" height="220" aria-label="Live pitch graph"></canvas>
+      </section>
+
+      <section class="spectrum-visualizer">
+        <h2>Live Spectrum Histogram</h2>
+        <p class="muted">Full FFT spectrum from 0 Hz to Nyquist.</p>
+        <canvas id="spectrum-canvas" width="920" height="220" aria-label="Live spectrum histogram"></canvas>
+      </section>
+
+      <section class="fingerings">
+        <h2>Fingerings for this written note</h2>
+        <p id="fingering-note" class="muted">Play a steady pitch to see options.</p>
+        <div id="fingering-list" class="fingering-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/alternate-fingerings.js"></script>
+</body>
+</html>
