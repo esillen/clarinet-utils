@@ -265,6 +265,20 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.register-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.register-options label {
+  min-width: 0;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .game-info {
   margin-top: 1rem;
   display: grid;

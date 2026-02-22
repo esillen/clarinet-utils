@@ -7,8 +7,22 @@ const TUNING_OFFSETS = {
 };
 
 const NOTE_NAMES_FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+const SCALES = {
+  C_MAJOR: { root: 0, intervals: [0, 2, 4, 5, 7, 9, 11] },
+  G_MAJOR: { root: 7, intervals: [0, 2, 4, 5, 7, 9, 11] },
+  D_MAJOR: { root: 2, intervals: [0, 2, 4, 5, 7, 9, 11] },
+  A_MAJOR: { root: 9, intervals: [0, 2, 4, 5, 7, 9, 11] },
+  F_MAJOR: { root: 5, intervals: [0, 2, 4, 5, 7, 9, 11] },
+  BB_MAJOR: { root: 10, intervals: [0, 2, 4, 5, 7, 9, 11] },
+  A_MINOR: { root: 9, intervals: [0, 2, 3, 5, 7, 8, 10] },
+  CHROMATIC: { root: 0, intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
+};
 
 const tuningSelect = document.getElementById("ptn-tuning");
+const scaleSelect = document.getElementById("ptn-scale");
+const regChalumeau = document.getElementById("reg-chalumeau");
+const regClarion = document.getElementById("reg-clarion");
+const regAltissimo = document.getElementById("reg-altissimo");
 const retryBtn = document.getElementById("ptn-retry");
 const stopBtn = document.getElementById("ptn-stop");
 const statusEl = document.getElementById("ptn-status");
@@ -30,6 +44,11 @@ let runStartedAt = 0;
 let currentCandidate = null;
 let lastHitAt = 0;
 let isRunning = false;
+const REGISTER_RANGES = {
+  chalumeau: { min: 52, max: 64 },
+  clarion: { min: 65, max: 79 },
+  altissimo: { min: 80, max: 96 }
+};
 
 function initializeTuning() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -127,12 +146,47 @@ function getStablePitch(newPitch) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+function getAllowedWrittenNotes() {
+  const pool = [];
+  const scale = SCALES[scaleSelect.value] || SCALES.C_MAJOR;
+  const allowedPitchClasses = new Set(scale.intervals.map((interval) => (scale.root + interval) % 12));
+
+  const addRange = (minMidi, maxMidi) => {
+    for (let midi = minMidi; midi <= maxMidi; midi += 1) {
+      if (allowedPitchClasses.has((midi + 1200) % 12)) {
+        pool.push(midi);
+      }
+    }
+  };
+
+  if (regChalumeau.checked) {
+    addRange(REGISTER_RANGES.chalumeau.min, REGISTER_RANGES.chalumeau.max);
+  }
+
+  if (regClarion.checked) {
+    addRange(REGISTER_RANGES.clarion.min, REGISTER_RANGES.clarion.max);
+  }
+
+  if (regAltissimo.checked) {
+    addRange(REGISTER_RANGES.altissimo.min, REGISTER_RANGES.altissimo.max);
+  }
+
+  return pool;
+}
+
 function randomTarget(previous = null) {
-  const minMidi = 67;
-  const maxMidi = 92;
+  const pool = getAllowedWrittenNotes();
+  if (pool.length === 0) {
+    return null;
+  }
+
+  if (pool.length === 1) {
+    return pool[0];
+  }
+
   let next = previous;
   while (next === previous) {
-    next = Math.floor(Math.random() * (maxMidi - minMidi + 1)) + minMidi;
+    next = pool[Math.floor(Math.random() * pool.length)];
   }
   return next;
 }
@@ -231,7 +285,15 @@ function renderTarget(writtenMidi) {
 }
 
 function setNextTarget() {
-  targetWrittenMidi = randomTarget(targetWrittenMidi);
+  const next = randomTarget(targetWrittenMidi);
+  if (next === null) {
+    targetWrittenMidi = null;
+    scoreEl.innerHTML = "<p class=\"muted\">Select at least one register.</p>";
+    noteLabelEl.textContent = "";
+    return;
+  }
+
+  targetWrittenMidi = next;
   targetShownAt = performance.now();
   currentCandidate = null;
   renderTarget(targetWrittenMidi);
@@ -264,6 +326,10 @@ function acceptHit() {
 }
 
 function checkMatch(concertMidi) {
+  if (targetWrittenMidi === null) {
+    return;
+  }
+
   const writtenMidi = concertMidi + TUNING_OFFSETS[tuningSelect.value];
   const now = performance.now();
 
@@ -370,6 +436,12 @@ function init() {
   saveTuning();
 
   tuningSelect.addEventListener("change", saveTuning);
+  scaleSelect.addEventListener("change", setNextTarget);
+  [regChalumeau, regClarion, regAltissimo].forEach((input) => {
+    input.addEventListener("change", () => {
+      setNextTarget();
+    });
+  });
   retryBtn.addEventListener("click", startMicrophone);
   stopBtn.addEventListener("click", stopMicrophone);
 

@@ -27,6 +27,29 @@
         </select>
       </div>
 
+      <div class="control-row">
+        <label for="ptn-scale">Scale</label>
+        <select id="ptn-scale">
+          <option value="C_MAJOR">C Major</option>
+          <option value="G_MAJOR">G Major</option>
+          <option value="D_MAJOR">D Major</option>
+          <option value="A_MAJOR">A Major</option>
+          <option value="F_MAJOR">F Major</option>
+          <option value="BB_MAJOR">B♭ Major</option>
+          <option value="A_MINOR">A Minor</option>
+          <option value="CHROMATIC">Chromatic</option>
+        </select>
+      </div>
+
+      <div class="control-row">
+        <label>Registers</label>
+        <div class="register-options">
+          <label for="reg-chalumeau"><input id="reg-chalumeau" type="checkbox" checked> Chalumeau</label>
+          <label for="reg-clarion"><input id="reg-clarion" type="checkbox" checked> Clarion</label>
+          <label for="reg-altissimo"><input id="reg-altissimo" type="checkbox" checked> Altissimo</label>
+        </div>
+      </div>
+
       <div class="control-actions">
         <button id="ptn-retry" type="button" hidden>Retry microphone</button>
         <button id="ptn-stop" type="button" disabled>Stop</button>
