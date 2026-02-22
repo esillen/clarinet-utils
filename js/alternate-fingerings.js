@@ -471,12 +471,11 @@ const TRACE_LENGTH = 260;
 const PITCH_MIDI_MIN = 48;
 const PITCH_MIDI_MAX = 96;
 const PANEL_SELECTOR = ".controls, .results, .pitch-visualizer, .spectrum-visualizer, .fingerings";
-const LAYOUT_STORAGE_KEY = "clarinet_layout_v1";
+const PANEL_ORDER_STORAGE_KEY = "clarinet_panel_order_v1";
 let pitchTrace = new Array(TRACE_LENGTH).fill(null);
 let frequencyBins = null;
-let dragState = null;
-let zCounter = 20;
 let panelsInitialized = false;
+let draggedPanelId = null;
 
 function initializeTuning() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -892,147 +891,132 @@ function clearPitchTrace() {
   renderPitchTrace();
 }
 
-function readLayout() {
-  const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+function readPanelOrder() {
+  const raw = localStorage.getItem(PANEL_ORDER_STORAGE_KEY);
   if (!raw) {
-    return {};
+    return [];
   }
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return {};
+    return [];
   }
 }
 
-function saveLayout() {
+function savePanelOrder() {
   if (!workspaceEl) {
     return;
   }
-  const layout = {};
-  workspaceEl.querySelectorAll(".draggable-panel").forEach((panel) => {
-    const id = panel.dataset.panelId;
-    layout[id] = {
-      left: panel.offsetLeft,
-      top: panel.offsetTop,
-      width: panel.offsetWidth
-    };
-  });
-  localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+  const order = Array.from(workspaceEl.querySelectorAll(PANEL_SELECTOR)).map((panel) => panel.dataset.panelId);
+  localStorage.setItem(PANEL_ORDER_STORAGE_KEY, JSON.stringify(order));
 }
 
-function updateWorkspaceHeight() {
+function findInsertionTarget(y) {
   if (!workspaceEl) {
+    return null;
+  }
+  const panels = Array.from(workspaceEl.querySelectorAll(PANEL_SELECTOR)).filter(
+    (panel) => panel.dataset.panelId !== draggedPanelId
+  );
+  return panels.find((panel) => {
+    const rect = panel.getBoundingClientRect();
+    return y < rect.top + rect.height / 2;
+  }) || null;
+}
+
+function onHandleDragStart(event) {
+  const handle = event.target.closest(".drag-handle");
+  const panel = handle ? handle.closest(PANEL_SELECTOR) : null;
+  if (!panel) {
+    event.preventDefault();
     return;
   }
-  let maxBottom = 0;
-  workspaceEl.querySelectorAll(".draggable-panel").forEach((panel) => {
-    maxBottom = Math.max(maxBottom, panel.offsetTop + panel.offsetHeight);
-  });
-  workspaceEl.style.minHeight = `${Math.max(900, maxBottom + 20)}px`;
+
+  draggedPanelId = panel.dataset.panelId;
+  panel.classList.add("is-reordering");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", draggedPanelId);
 }
 
-function clampPanel(panel) {
-  const maxLeft = Math.max(0, workspaceEl.clientWidth - panel.offsetWidth);
-  const maxTop = Math.max(0, workspaceEl.clientHeight - panel.offsetHeight);
-  const nextLeft = Math.min(maxLeft, Math.max(0, panel.offsetLeft));
-  const nextTop = Math.min(maxTop, Math.max(0, panel.offsetTop));
-  panel.style.left = `${nextLeft}px`;
-  panel.style.top = `${nextTop}px`;
-}
-
-function onDragMove(event) {
-  if (!dragState) {
+function onWorkspaceDragOver(event) {
+  if (!draggedPanelId || !workspaceEl) {
     return;
   }
-  const nextLeft = event.clientX - dragState.pointerOffsetX;
-  const nextTop = event.clientY - dragState.pointerOffsetY;
-  dragState.panel.style.left = `${nextLeft}px`;
-  dragState.panel.style.top = `${nextTop}px`;
-  clampPanel(dragState.panel);
-  updateWorkspaceHeight();
-}
-
-function onDragEnd() {
-  if (!dragState) {
-    return;
-  }
-  dragState.panel.classList.remove("dragging");
-  dragState.panel.releasePointerCapture(dragState.pointerId);
-  dragState = null;
-  saveLayout();
-}
-
-function onDragStart(event, panel) {
   event.preventDefault();
-  panel.style.zIndex = String(zCounter++);
-  panel.classList.add("dragging");
-  panel.setPointerCapture(event.pointerId);
-  dragState = {
-    panel,
-    pointerId: event.pointerId,
-    pointerOffsetX: event.clientX - panel.offsetLeft,
-    pointerOffsetY: event.clientY - panel.offsetTop
-  };
+
+  const draggedPanel = workspaceEl.querySelector(`[data-panel-id="${draggedPanelId}"]`);
+  if (!draggedPanel) {
+    return;
+  }
+
+  const target = findInsertionTarget(event.clientY);
+  if (target && target !== draggedPanel) {
+    workspaceEl.insertBefore(draggedPanel, target);
+  } else if (!target) {
+    workspaceEl.appendChild(draggedPanel);
+  }
 }
 
-function setupDraggablePanels() {
+function onAnyDragEnd() {
+  if (!workspaceEl) {
+    draggedPanelId = null;
+    return;
+  }
+  workspaceEl.querySelectorAll(PANEL_SELECTOR).forEach((panel) => panel.classList.remove("is-reordering"));
+  if (draggedPanelId) {
+    savePanelOrder();
+  }
+  draggedPanelId = null;
+}
+
+function applySavedPanelOrder() {
+  if (!workspaceEl) {
+    return;
+  }
+  const order = readPanelOrder();
+  if (order.length === 0) {
+    return;
+  }
+  const panelsById = new Map(
+    Array.from(workspaceEl.querySelectorAll(PANEL_SELECTOR)).map((panel) => [panel.dataset.panelId, panel])
+  );
+  order.forEach((id) => {
+    const panel = panelsById.get(id);
+    if (panel) {
+      workspaceEl.appendChild(panel);
+    }
+  });
+}
+
+function setupReorderablePanels() {
   if (!workspaceEl || panelsInitialized) {
     return;
   }
 
-  const layout = readLayout();
-  const workspaceRect = workspaceEl.getBoundingClientRect();
   const panels = Array.from(workspaceEl.querySelectorAll(PANEL_SELECTOR));
-
   panels.forEach((panel, index) => {
     if (!panel.dataset.panelId) {
       panel.dataset.panelId = panel.classList[0] || `panel-${index + 1}`;
     }
+    panel.classList.add("reorderable-panel");
 
     if (!panel.querySelector(".drag-handle")) {
       const handle = document.createElement("div");
       handle.className = "drag-handle";
-      handle.textContent = "Drag";
-      handle.addEventListener("pointerdown", (event) => onDragStart(event, panel));
+      handle.textContent = "Drag to Reorder";
+      handle.setAttribute("draggable", "true");
+      handle.addEventListener("dragstart", onHandleDragStart);
+      handle.addEventListener("dragend", onAnyDragEnd);
       panel.insertBefore(handle, panel.firstChild);
     }
-
-    const rect = panel.getBoundingClientRect();
-    const fallbackLeft = rect.left - workspaceRect.left;
-    const fallbackTop = rect.top - workspaceRect.top;
-    const saved = layout[panel.dataset.panelId];
-    const left = saved && Number.isFinite(saved.left) ? saved.left : fallbackLeft;
-    const top = saved && Number.isFinite(saved.top) ? saved.top : fallbackTop;
-    const width = saved && Number.isFinite(saved.width) ? saved.width : rect.width;
-
-    panel.classList.add("draggable-panel");
-    panel.style.left = `${Math.max(0, left)}px`;
-    panel.style.top = `${Math.max(0, top)}px`;
-    panel.style.width = `${Math.max(280, Math.min(workspaceEl.clientWidth, width))}px`;
-    panel.style.zIndex = String(zCounter++);
-    clampPanel(panel);
   });
 
-  window.addEventListener("pointermove", onDragMove);
-  window.addEventListener("pointerup", onDragEnd);
-  window.addEventListener("pointercancel", onDragEnd);
+  applySavedPanelOrder();
+  workspaceEl.addEventListener("dragover", onWorkspaceDragOver);
+  workspaceEl.addEventListener("drop", (event) => event.preventDefault());
+  workspaceEl.addEventListener("dragend", onAnyDragEnd);
   panelsInitialized = true;
-  updateWorkspaceHeight();
-}
-
-function relayoutPanelsAfterResize() {
-  if (!workspaceEl) {
-    return;
-  }
-  workspaceEl.querySelectorAll(".draggable-panel").forEach((panel) => {
-    const maxWidth = workspaceEl.clientWidth;
-    const currentWidth = Math.min(maxWidth, panel.offsetWidth);
-    panel.style.width = `${Math.max(280, currentWidth)}px`;
-    clampPanel(panel);
-  });
-  updateWorkspaceHeight();
-  saveLayout();
 }
 
 function renderFingerings(writtenMidi) {
@@ -1183,13 +1167,12 @@ function stopMicrophone() {
 function init() {
   initializeTuning();
   tuningSelect.dataset.previous = tuningSelect.value;
-  setupDraggablePanels();
+  setupReorderablePanels();
 
   tuningSelect.addEventListener("change", saveTuning);
   retryBtn.addEventListener("click", startMicrophone);
   stopBtn.addEventListener("click", stopMicrophone);
   window.addEventListener("resize", () => {
-    relayoutPanelsAfterResize();
     renderPitchTrace();
     renderSpectrumHistogram(audioContext ? audioContext.sampleRate : null);
   });
