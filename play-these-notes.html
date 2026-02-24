@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Play These Notes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav">
+      <a href="index.html">← Back to utilities</a>
+    </nav>
+
+    <header>
+      <h1>Play These Notes</h1>
+      <p>Play the shown 8-note sequence in order. After each sequence, a 1 second breathing pause starts automatically.</p>
+    </header>
+
+    <div id="play-these-workspace" class="workspace">
+      <section class="game-controls utility-panel">
+        <div class="control-row">
+          <p id="ptn2-current-tuning" class="status">Clarinet tuning: -</p>
+        </div>
+
+        <div class="control-row">
+          <label for="ptn2-scale">Scale</label>
+          <select id="ptn2-scale">
+            <option value="C_MAJOR">C Major</option>
+            <option value="G_MAJOR">G Major</option>
+            <option value="D_MAJOR">D Major</option>
+            <option value="A_MAJOR">A Major</option>
+            <option value="F_MAJOR">F Major</option>
+            <option value="BB_MAJOR">B♭ Major</option>
+            <option value="A_MINOR">A Minor</option>
+            <option value="CHROMATIC">Chromatic</option>
+          </select>
+        </div>
+
+        <div class="control-row">
+          <label for="ptn2-difficulty">Difficulty</label>
+          <select id="ptn2-difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div class="control-actions">
+          <button id="ptn2-retry" type="button" hidden>Retry microphone</button>
+          <button id="ptn2-stop" type="button" disabled>Stop</button>
+        </div>
+
+        <p id="ptn2-status" class="status">Starting microphone...</p>
+      </section>
+
+      <section class="game-info utility-panel">
+        <article class="game-card">
+          <h2>Sequences</h2>
+          <p id="ptn2-rounds" class="big">0</p>
+        </article>
+        <article class="game-card">
+          <h2>Notes / Minute</h2>
+          <p id="ptn2-npm" class="big">0.0</p>
+        </article>
+        <article class="game-card">
+          <h2>Last Reaction</h2>
+          <p id="ptn2-reaction" class="big">-</p>
+        </article>
+      </section>
+
+      <section class="score-panel utility-panel">
+        <h2>Target Sequence</h2>
+        <p class="muted">Play from left to right. Green = completed, dark = current note, light = upcoming notes.</p>
+        <div id="ptn2-score"></div>
+        <p id="ptn2-note-label" class="muted"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/music-core.js"></script>
+  <script src="js/staff-render.js"></script>
+  <script src="js/pitch-detector.js"></script>
+  <script src="js/reorder-panels.js"></script>
+  <script src="js/play-these-notes.js"></script>
+</body>
+</html>
