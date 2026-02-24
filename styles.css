@@ -266,6 +266,32 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   gap: 0.75rem;
 }
 
+#alternate-fingerings-panel {
+  min-height: 420px;
+}
+
+#alternate-fingerings-panel .fingering-list {
+  min-height: 0;
+  align-items: start;
+  align-content: start;
+}
+
+.fingering-placeholder {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.fingering-placeholder-text h3 {
+  margin: 0 0 0.35rem;
+}
+
+.fingering-placeholder-text p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .chart-results {
   display: flex;
   flex-direction: column;
@@ -837,6 +863,19 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   .fingering-list {
     grid-template-columns: 1fr;
     gap: 0.45rem;
+  }
+
+  #alternate-fingerings-panel {
+    min-height: 360px;
+  }
+
+  #alternate-fingerings-panel .fingering-list {
+    min-height: 0;
+  }
+
+  .fingering-placeholder {
+    grid-template-columns: 108px minmax(0, 1fr);
+    gap: 0.4rem;
   }
 
   .fingering-card-compact {

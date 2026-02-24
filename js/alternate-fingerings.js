@@ -1,5 +1,5 @@
 const { TUNING_OFFSETS } = window.ClarinetCore;
-const { getEntry, renderFingeringCard, getReferenceHtml } = window.ClarinetFingerings;
+const { getEntry, renderFingeringCard } = window.ClarinetFingerings;
 
 const currentTuningEl = document.getElementById("current-tuning");
 const retryBtn = document.getElementById("retry-btn");
@@ -10,7 +10,6 @@ const concertFreqEl = document.getElementById("concert-freq");
 const writtenNoteEl = document.getElementById("written-note");
 const fingeringNoteEl = document.getElementById("fingering-note");
 const fingeringListEl = document.getElementById("fingering-list");
-const fingeringVisualRefsEl = document.getElementById("fingering-visual-refs");
 const staffEl = document.getElementById("staff");
 const pitchCanvas = document.getElementById("pitch-canvas");
 const spectrumCanvas = document.getElementById("spectrum-canvas");
@@ -20,6 +19,7 @@ let analyser = null;
 let micStream = null;
 let rafId = null;
 let currentWrittenMidi = null;
+let lastRenderedWrittenMidi = null;
 const TRACE_LENGTH = 260;
 const PITCH_MIDI_MIN = 48;
 const PITCH_MIDI_MAX = 96;
@@ -27,6 +27,8 @@ let pitchTrace = new Array(TRACE_LENGTH).fill(null);
 let frequencyBins = null;
 let currentTuning = "Bb";
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
+let noPitchFrameCount = 0;
+const NO_PITCH_PLACEHOLDER_FRAMES = 16;
 
 function initializeTuning() {
   currentTuning = window.ClarinetCore.readTuning("Bb");
@@ -250,15 +252,33 @@ function clearPitchTrace() {
   renderPitchTrace();
 }
 
+function renderFingeringPlaceholder(message = "Play a steady note to show fingerings.") {
+  fingeringListEl.innerHTML = "";
+  const placeholderFingering = {
+    name: "Waiting For Note",
+    type: "Primary",
+    keys: "",
+    info: message
+  };
+  fingeringListEl.appendChild(
+    renderFingeringCard(placeholderFingering, {
+      compact: true,
+      showVisual: true,
+      compactShowImage: true,
+      horizontal: true,
+      hideKeys: true,
+      showHoleOverlay: false
+    })
+  );
+}
+
 function renderFingerings(writtenMidi) {
   const entry = getEntry(writtenMidi);
   fingeringListEl.innerHTML = "";
 
   if (!entry) {
     fingeringNoteEl.textContent = `No fingering data in this tool for ${window.ClarinetCore.midiToName(writtenMidi, true)} yet.`;
-    if (fingeringVisualRefsEl) {
-      fingeringVisualRefsEl.textContent = "";
-    }
+    renderFingeringPlaceholder("No fingering data found for this written note.");
     return;
   }
 
@@ -278,9 +298,6 @@ function renderFingerings(writtenMidi) {
     );
   });
 
-  if (fingeringVisualRefsEl) {
-    fingeringVisualRefsEl.innerHTML = getReferenceHtml();
-  }
 }
 
 function renderFromMidi(concertMidi, detectedFrequency = null) {
@@ -301,9 +318,12 @@ function renderFromMidi(concertMidi, detectedFrequency = null) {
     concertFreqEl.textContent = `${detectedFrequency.toFixed(2)} Hz (${centsPrefix}${cents} cents)`;
   }
 
-  const entry = getEntry(writtenMidi);
-  renderStaff(writtenMidi, entry ? entry.noteLabel : writtenLabel);
-  renderFingerings(writtenMidi);
+  if (lastRenderedWrittenMidi !== writtenMidi) {
+    const entry = getEntry(writtenMidi);
+    renderStaff(writtenMidi, entry ? entry.noteLabel : writtenLabel);
+    renderFingerings(writtenMidi);
+    lastRenderedWrittenMidi = writtenMidi;
+  }
 }
 
 function tickPitch() {
@@ -321,12 +341,21 @@ function tickPitch() {
   const pitch = window.PitchFinder.autoCorrelate(buffer, audioContext.sampleRate);
 
   if (pitch > 65 && pitch < 2100) {
+    noPitchFrameCount = 0;
     const stable = pitchSmoother.push(pitch);
     const midi = window.ClarinetCore.freqToMidi(stable);
     renderFromMidi(midi, stable);
     pushPitchTrace(stable);
     micStatus.textContent = "Listening... keep a stable tone for best results.";
   } else {
+    noPitchFrameCount += 1;
+    if (noPitchFrameCount === NO_PITCH_PLACEHOLDER_FRAMES) {
+      if (currentWrittenMidi === null) {
+        fingeringNoteEl.textContent = "Play a steady pitch to see options.";
+        renderFingeringPlaceholder();
+        lastRenderedWrittenMidi = null;
+      }
+    }
     pushPitchTrace(null);
   }
 
@@ -387,6 +416,7 @@ function stopMicrophone() {
 
   analyser = null;
   frequencyBins = null;
+  lastRenderedWrittenMidi = null;
   retryBtn.hidden = false;
   retryBtn.disabled = false;
   stopBtn.disabled = true;
@@ -412,6 +442,7 @@ function init() {
   });
 
   concertFreqEl.textContent = "";
+  renderFingeringPlaceholder();
   renderPitchTrace();
   renderSpectrumHistogram();
   startMicrophone();

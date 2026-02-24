@@ -4,7 +4,6 @@ const typeFilterEl = document.getElementById("chart-type-filter");
 const searchEl = document.getElementById("chart-search");
 const summaryEl = document.getElementById("chart-summary");
 const resultsEl = document.getElementById("chart-results");
-const chartVisualRefsEl = document.getElementById("chart-visual-refs");
 
 let currentTuning = "Bb";
 const allEntries = window.ClarinetFingerings.getEntries();
@@ -125,10 +124,14 @@ function renderEntry(entry, fingerings) {
 
     const text = document.createElement("div");
     text.className = "chart-fingering-text";
+    const notation = window.ClarinetFingerings.formatCompactNotation(fingering.keys);
+    const description = window.ClarinetFingerings.describeFingering(fingering, {
+      writtenMidi: entry.writtenMidi
+    });
     text.innerHTML = [
       `<p><span class="chart-fingering-type">${fingering.type}</span> <strong>${fingering.name}</strong></p>`,
-      `<p class="chart-fingering-keys"><strong>Keys:</strong> ${fingering.keys}</p>`,
-      `<p class="chart-fingering-info">${fingering.info}</p>`
+      `<p class="chart-fingering-keys"><strong>Notation:</strong> ${notation}</p>`,
+      `<p class="chart-fingering-info">${description}</p>`
     ].join("");
     row.appendChild(text);
 
@@ -177,7 +180,6 @@ function render() {
 function init() {
   currentTuning = window.ClarinetCore.readTuning("Bb");
   chartTuningEl.textContent = `Clarinet tuning: ${currentTuning}`;
-  chartVisualRefsEl.innerHTML = window.ClarinetFingerings.getReferenceHtml();
 
   populateNoteFilter();
 

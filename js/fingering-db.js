@@ -1165,16 +1165,6 @@ const FINGERING_DB = {
     return sanitizeTextTokenLayerMapping(mapping);
   }
 
-  function setLayerVisibility(layer, visible) {
-    const style = layer.getAttribute("style") || "";
-    const parts = style
-      .split(";")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0 && !part.startsWith("display:"));
-    parts.push(`display:${visible ? "inline" : "none"}`);
-    layer.setAttribute("style", parts.join(";"));
-  }
-
   function getRequestedLayerLabelsFromKeys(keysSource, options = {}) {
     if (typeof keysSource === "string") {
       const resolved = resolveKeysTextToLayerLabels(keysSource, { writtenMidi: options.writtenMidi });
@@ -1193,179 +1183,6 @@ const FINGERING_DB = {
     });
 
     return layers;
-  }
-
-  async function buildLayeredTemplateSvg(fingering, options = {}) {
-    const svgText = await loadTemplateSvgText();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgText, "image/svg+xml");
-    const sourceSvg = doc.querySelector("svg");
-    if (!sourceSvg) {
-      return null;
-    }
-
-    const layers = Array.from(sourceSvg.querySelectorAll("g")).filter((group) => (
-      group.getAttribute("inkscape:groupmode") === "layer" || group.getAttribute("groupmode") === "layer"
-    ));
-    if (layers.length === 0) {
-      return null;
-    }
-
-    const selectedLayerIds = new Set();
-    const labelsToEnable = getRequestedLayerLabelsFromKeys(fingering.keys || fingering.keyIds, {
-      writtenMidi: options.writtenMidi
-    });
-
-    layers.forEach((layer) => {
-      const id = layer.getAttribute("id");
-      const label = layer.getAttribute("inkscape:label") || "";
-      if (!id) {
-        return;
-      }
-      if (labelsToEnable.has(label)) {
-        selectedLayerIds.add(id);
-      }
-    });
-
-    if (selectedLayerIds.size === 0) {
-      return null;
-    }
-
-    const outSvg = sourceSvg.cloneNode(true);
-    const outLayers = Array.from(outSvg.querySelectorAll("g")).filter((group) => (
-      group.getAttribute("inkscape:groupmode") === "layer" || group.getAttribute("groupmode") === "layer"
-    ));
-
-    outLayers.forEach((layer) => {
-      const id = layer.getAttribute("id");
-      if (selectedLayerIds.has(id)) {
-        setLayerVisibility(layer, true);
-      } else {
-        setLayerVisibility(layer, false);
-      }
-    });
-
-    outSvg.classList.add("fingering-inline-svg");
-    outSvg.classList.add("fingering-overlay-svg");
-    if (!outSvg.getAttribute("viewBox")) {
-      const width = parseFloat(outSvg.getAttribute("width") || "0");
-      const height = parseFloat(outSvg.getAttribute("height") || "0");
-      if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
-        outSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      }
-    }
-    return outSvg;
-  }
-
-  async function tryApplyTemplateLayers(frame, fingering, options = {}) {
-    try {
-      const inlineSvg = await buildLayeredTemplateSvg(fingering, options);
-      if (!inlineSvg) {
-        return;
-      }
-      const existing = frame.querySelector(".fingering-overlay-svg");
-      if (existing) {
-        existing.remove();
-      }
-      frame.appendChild(inlineSvg);
-      frame.classList.add("fingering-layered");
-    } catch {
-      // Keep base image if layer-based rendering cannot be resolved.
-    }
-  }
-
-  function buildVisualFrame(fingering, visualGuide, showHoleOverlay, options = {}) {
-    const frame = document.createElement("div");
-    frame.className = "fingering-image-frame";
-
-    const image = document.createElement("img");
-    image.src = visualGuide.imageUrl;
-    image.alt = `${fingering.name} fingering visual guide`;
-    image.loading = "lazy";
-
-    frame.appendChild(image);
-
-    if (showHoleOverlay && visualGuide === FINGERING_VISUALS.template) {
-      tryApplyTemplateLayers(frame, fingering, options);
-    }
-
-    return frame;
-  }
-
-  function buildVisualFigure(fingering, visualGuide, showHoleOverlay, options = {}) {
-    const visual = document.createElement("figure");
-    visual.className = "fingering-visual";
-    const frame = buildVisualFrame(fingering, visualGuide, showHoleOverlay, options);
-    const caption = document.createElement("figcaption");
-    caption.innerHTML = `Visual guide: <a href="${visualGuide.sourceUrl}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (${visualGuide.license}).`;
-    visual.appendChild(frame);
-    visual.appendChild(caption);
-    return visual;
-  }
-
-  function renderFingeringVisualFrame(fingering, options = {}) {
-    const visualGuide = options.visualGuide || getVisualGuide(fingering.type);
-    const showHoleOverlay = options.showHoleOverlay !== false;
-    return buildVisualFrame(fingering, visualGuide, showHoleOverlay, options);
-  }
-
-  function renderFingeringCard(fingering, options = {}) {
-    const compact = Boolean(options.compact);
-    const showVisual = options.showVisual !== false;
-    const compactShowImage = Boolean(options.compactShowImage);
-    const horizontal = Boolean(options.horizontal);
-    const hideKeys = Boolean(options.hideKeys);
-    const showHoleOverlay = Boolean(options.showHoleOverlay);
-    const card = document.createElement("article");
-    card.className = "fingering-card";
-    if (compact) {
-      card.classList.add("fingering-card-compact");
-    }
-    if (horizontal) {
-      card.classList.add("fingering-card-horizontal");
-    }
-
-    const title = document.createElement("h3");
-    title.textContent = fingering.name;
-
-    const type = document.createElement("p");
-    type.innerHTML = `<strong>Type:</strong> ${fingering.type}`;
-
-    const info = document.createElement("p");
-    info.innerHTML = `<strong>Info:</strong> ${fingering.info}`;
-    const content = document.createElement("div");
-    content.className = "fingering-content";
-    content.appendChild(title);
-    content.appendChild(type);
-    if (!hideKeys) {
-      const keys = document.createElement("p");
-      keys.innerHTML = `<strong>Keys:</strong> ${fingering.keys}`;
-      content.appendChild(keys);
-    }
-    content.appendChild(info);
-
-    if (showVisual) {
-      const visualGuide = getVisualGuide(fingering.type);
-      if (compact && !compactShowImage) {
-        const guide = document.createElement("p");
-        guide.className = "fingering-guide-link";
-        guide.innerHTML = `Guide: <a href="${visualGuide.sourceUrl}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> (${visualGuide.license}).`;
-        content.appendChild(guide);
-      } else {
-        const visual = buildVisualFigure(fingering, visualGuide, showHoleOverlay, options);
-        if (horizontal) {
-          card.appendChild(visual);
-          card.appendChild(content);
-          return card;
-        }
-        card.appendChild(content);
-        card.appendChild(visual);
-        return card;
-      }
-    }
-
-    card.appendChild(content);
-    return card;
   }
 
   function getReferenceHtml() {
@@ -1401,7 +1218,6 @@ const FINGERING_DB = {
     inferTextTokenLayerMappingFromLabels,
     getEntries,
     getVisualGuide,
-    renderFingeringVisualFrame,
     parseKeyIdsFromText,
     getActiveLayerMapping() {
       return { ...activeLayerMapping };
@@ -1418,10 +1234,13 @@ const FINGERING_DB = {
     refreshLayerMappingOverride,
     refreshTextTokenLayerMappingOverride,
     resolveKeysTextToLayerLabels,
+    resolveLayerLabelsForFingering(keysSource, options = {}) {
+      return getRequestedLayerLabelsFromKeys(keysSource, options);
+    },
+    loadTemplateSvgText,
     getEntry(writtenMidi) {
       return FINGERING_DB[writtenMidi] || null;
     },
-    renderFingeringCard,
     getReferenceHtml
   };
 })();
