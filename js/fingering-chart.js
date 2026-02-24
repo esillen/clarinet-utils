@@ -15,37 +15,15 @@ function getConcertNoteLabel(writtenMidi) {
 }
 
 function renderMiniStaff(writtenMidi, noteLabel = "") {
-  return window.ClarinetStaffRenderer.renderStaffSvg({
-    writtenMidi,
-    noteLabel,
-    className: "chart-staff-svg",
+  const spellings = window.ClarinetStaffRenderer.getDisplayedSpellingVariants(noteLabel, writtenMidi);
+  const svg = window.ClarinetStaffRenderer.renderNoteSequenceSvg({
     width: 140,
     height: 90,
-    left: 30,
-    right: 132,
-    staffTop: 28,
-    spacing: 7,
-    noteX: 82,
-    dualDx: 15,
-    noteHeadRx: 7,
-    noteHeadRy: 5,
-    noteHeadFill: "#10634f",
-    noteRotateDeg: -20,
-    stemLength: 22,
-    stemWidth: 1.1,
-    stemColor: "#10634f",
-    accidentalDx: 22,
-    accidentalDy: 3,
-    accidentalSize: 11,
-    ledgerHalfWidth: 10,
-    ledgerColor: "#122420",
-    ledgerWidth: 1,
-    staffColor: "#1a2a27",
-    staffWidth: 1,
-    clefX: 4,
-    clefY: 52,
-    clefSize: 34
+    scale: "CHROMATIC",
+    notes: [{ writtenMidi, spellings, fill: "#10634f", stemColor: "#10634f" }]
   });
+  svg.classList.add("chart-staff-svg");
+  return svg;
 }
 
 function populateNoteFilter() {

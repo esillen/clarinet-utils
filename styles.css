@@ -490,6 +490,34 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   background: #fff;
 }
 
+.staff-showcase-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.staff-showcase-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 0.8rem;
+}
+
+.staff-showcase-card h3 {
+  margin: 0 0 0.3rem;
+}
+
+.staff-showcase-card .muted {
+  margin: 0 0 0.5rem;
+}
+
+.staff-showcase-frame {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.2rem;
+  overflow-x: auto;
+}
+
 .game-controls,
 .game-info,
 .score-panel,

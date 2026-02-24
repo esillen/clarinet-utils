@@ -38,36 +38,12 @@ function initializeTuning() {
 }
 
 function renderStaff(midi, noteLabel = "") {
-  const svg = window.ClarinetStaffRenderer.renderStaffSvg({
-    writtenMidi: midi,
-    noteLabel,
-    className: "staff-svg",
+  const spellings = window.ClarinetStaffRenderer.getDisplayedSpellingVariants(noteLabel, midi);
+  const svg = window.ClarinetStaffRenderer.renderNoteSequenceSvg({
     width: 360,
     height: 190,
-    left: 48,
-    right: 340,
-    staffTop: 52,
-    spacing: 7,
-    noteX: 175,
-    dualDx: 20,
-    noteHeadRx: 10,
-    noteHeadRy: 7,
-    noteHeadFill: "#122420",
-    noteRotateDeg: -20,
-    stemLength: 34,
-    stemWidth: 1.6,
-    stemColor: "#122420",
-    accidentalDx: 28,
-    accidentalDy: 4,
-    accidentalSize: 19,
-    ledgerHalfWidth: 18,
-    ledgerColor: "#1a2a27",
-    ledgerWidth: 1.2,
-    staffColor: "#1a2a27",
-    staffWidth: 1.2,
-    clefX: 12,
-    clefY: 80,
-    clefSize: 58
+    scale: "CHROMATIC",
+    notes: [{ writtenMidi: midi, spellings }]
   });
   staffEl.innerHTML = "";
   staffEl.appendChild(svg);
