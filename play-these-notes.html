@@ -46,8 +46,17 @@
           </select>
         </div>
 
+        <div class="control-row">
+          <label>Registers</label>
+          <div class="register-options">
+            <label for="ptn2-reg-chalumeau"><input id="ptn2-reg-chalumeau" type="checkbox" checked> Chalumeau</label>
+            <label for="ptn2-reg-clarion"><input id="ptn2-reg-clarion" type="checkbox" checked> Clarion</label>
+            <label for="ptn2-reg-altissimo"><input id="ptn2-reg-altissimo" type="checkbox" checked> Altissimo</label>
+          </div>
+        </div>
+
         <div class="control-actions">
-          <button id="ptn2-retry" type="button" hidden>Retry microphone</button>
+          <button id="ptn2-retry" type="button" hidden>Start</button>
           <button id="ptn2-stop" type="button" disabled>Stop</button>
         </div>
 
@@ -80,6 +89,7 @@
 
   <script src="js/music-core.js"></script>
   <script src="js/staff-render.js"></script>
+  <script src="js/scale-register-controls.js"></script>
   <script src="js/pitch-detector.js"></script>
   <script src="js/reorder-panels.js"></script>
   <script src="js/play-these-notes.js"></script>

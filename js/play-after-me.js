@@ -1,4 +1,4 @@
-const { TUNING_OFFSETS, SCALES } = window.ClarinetCore;
+const { TUNING_OFFSETS } = window.ClarinetCore;
 
 const DIFFICULTY_PRESETS = {
   easy: {
@@ -19,12 +19,6 @@ const DIFFICULTY_PRESETS = {
     maxJump: 8,
     jumpBias: "large"
   }
-};
-
-const REGISTER_RANGES = {
-  chalumeau: { min: 52, max: 64 },
-  clarion: { min: 65, max: 79 },
-  altissimo: { min: 80, max: 96 }
 };
 
 const currentTuningEl = document.getElementById("pam-current-tuning");
@@ -62,6 +56,7 @@ let detectedSequence = [];
 let currentCandidate = null;
 let lastAcceptedAt = 0;
 let currentTuning = "Bb";
+let scaleRegisterControls = null;
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 
 function randomInt(min, max) {
@@ -103,29 +98,8 @@ function getDifficultyConfig() {
   };
 }
 
-function getRegisterPool() {
-  const pool = [];
-  const addRange = (minMidi, maxMidi) => {
-    for (let midi = minMidi; midi <= maxMidi; midi += 1) {
-      pool.push(midi);
-    }
-  };
-
-  if (regChalumeau.checked) {
-    addRange(REGISTER_RANGES.chalumeau.min, REGISTER_RANGES.chalumeau.max);
-  }
-  if (regClarion.checked) {
-    addRange(REGISTER_RANGES.clarion.min, REGISTER_RANGES.clarion.max);
-  }
-  if (regAltissimo.checked) {
-    addRange(REGISTER_RANGES.altissimo.min, REGISTER_RANGES.altissimo.max);
-  }
-
-  return [...new Set(pool)].sort((a, b) => a - b);
-}
-
 function getSelectableNotePool(config) {
-  const registerPool = getRegisterPool();
+  const registerPool = scaleRegisterControls.getRegisterPool();
   if (registerPool.length === 0) {
     return [];
   }
@@ -139,11 +113,7 @@ function getSelectableNotePool(config) {
     return [];
   }
 
-  const scale = SCALES[scaleSelect.value];
-  const allowedPitchClasses = new Set(scale.intervals.map((interval) => (scale.root + interval) % 12));
-  const scaleFiltered = candidatePool.filter((writtenMidi) => (
-    allowedPitchClasses.has(((writtenMidi % 12) + 12) % 12)
-  ));
+  const scaleFiltered = scaleRegisterControls.filterToScale(candidatePool);
 
   return scaleFiltered.length > 0 ? scaleFiltered : candidatePool;
 }
@@ -230,7 +200,7 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false, reveal
     notes,
     width,
     height: 210,
-    scale: scaleSelect.value
+    scale: scaleRegisterControls.getScale()
   });
   svg.setAttribute("class", "staff-svg");
   svg.style.maxWidth = "100%";
@@ -504,11 +474,8 @@ async function startGame() {
 
   startBtn.disabled = true;
   stopBtn.disabled = false;
-  scaleSelect.disabled = true;
+  scaleRegisterControls.setDisabled(true);
   difficultySelect.disabled = true;
-  regChalumeau.disabled = true;
-  regClarion.disabled = true;
-  regAltissimo.disabled = true;
   revealFirstNote.disabled = true;
   customControls.querySelectorAll("input").forEach((input) => {
     input.disabled = true;
@@ -545,11 +512,8 @@ function stopGame() {
 
   startBtn.disabled = false;
   stopBtn.disabled = true;
-  scaleSelect.disabled = false;
+  scaleRegisterControls.setDisabled(false);
   difficultySelect.disabled = false;
-  regChalumeau.disabled = false;
-  regClarion.disabled = false;
-  regAltissimo.disabled = false;
   revealFirstNote.disabled = false;
   customControls.querySelectorAll("input").forEach((input) => {
     input.disabled = false;
@@ -560,6 +524,15 @@ function stopGame() {
 
 function init() {
   initializeTuning();
+  scaleRegisterControls = window.ClarinetScaleRegisterControls.init({
+    scaleSelect,
+    registerCheckboxes: {
+      chalumeau: regChalumeau,
+      clarion: regClarion,
+      altissimo: regAltissimo
+    },
+    defaultScale: "C_MAJOR"
+  });
   updateDifficultyVisibility();
   if (window.initReorderableWorkspace) {
     window.initReorderableWorkspace({

@@ -1,21 +1,15 @@
-const { TUNING_OFFSETS, SCALES } = window.ClarinetCore;
+const { TUNING_OFFSETS } = window.ClarinetCore;
 
 const DIFFICULTY_PRESETS = {
   easy: {
-    minMidi: 65,
-    maxMidi: 79,
     maxJump: 2,
     jumpBias: "small"
   },
   medium: {
-    minMidi: 65,
-    maxMidi: 96,
     maxJump: 5,
     jumpBias: "mixed"
   },
   hard: {
-    minMidi: 65,
-    maxMidi: 96,
     maxJump: 9,
     jumpBias: "large"
   }
@@ -27,6 +21,9 @@ const BREATHING_PAUSE_MS = 1000;
 const currentTuningEl = document.getElementById("ptn2-current-tuning");
 const scaleSelect = document.getElementById("ptn2-scale");
 const difficultySelect = document.getElementById("ptn2-difficulty");
+const regChalumeau = document.getElementById("ptn2-reg-chalumeau");
+const regClarion = document.getElementById("ptn2-reg-clarion");
+const regAltissimo = document.getElementById("ptn2-reg-altissimo");
 const retryBtn = document.getElementById("ptn2-retry");
 const stopBtn = document.getElementById("ptn2-stop");
 const statusEl = document.getElementById("ptn2-status");
@@ -52,6 +49,7 @@ let lastAcceptedAt = 0;
 let sequenceCount = 0;
 let totalAcceptedNotes = 0;
 let runStartedAt = 0;
+let scaleRegisterControls = null;
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 
 function randomInt(min, max) {
@@ -64,19 +62,7 @@ function initializeTuning() {
 }
 
 function getAllowedWrittenNotes() {
-  const scale = SCALES[scaleSelect.value] || SCALES.C_MAJOR;
-  const difficulty = DIFFICULTY_PRESETS[difficultySelect.value] || DIFFICULTY_PRESETS.easy;
-  const allowedPitchClasses = new Set(scale.intervals.map((interval) => (scale.root + interval) % 12));
-  const pool = [];
-
-  for (let midi = difficulty.minMidi; midi <= difficulty.maxMidi; midi += 1) {
-    const writtenPitchClass = ((midi % 12) + 12) % 12;
-    if (allowedPitchClasses.has(writtenPitchClass)) {
-      pool.push(midi);
-    }
-  }
-
-  return pool;
+  return scaleRegisterControls.getScaleFilteredRegisterPool();
 }
 
 function pickNextIndex(currentIndex, poolLength, config) {
@@ -147,7 +133,7 @@ function updateStats() {
 
 function renderSequence() {
   if (currentSequence.length === 0) {
-    scoreEl.innerHTML = "<p class=\"muted\">No playable notes for this scale/difficulty.</p>";
+    scoreEl.innerHTML = "<p class=\"muted\">No playable notes for this scale/difficulty/register selection.</p>";
     noteLabelEl.textContent = "";
     return;
   }
@@ -166,7 +152,7 @@ function renderSequence() {
   const svg = window.ClarinetStaffRenderer.renderNoteSequenceSvg({
     width,
     height: 220,
-    scale: scaleSelect.value,
+    scale: scaleRegisterControls.getScale(),
     notes
   });
   svg.classList.add("staff-svg");
@@ -185,7 +171,7 @@ function beginNextSequence() {
   inBreathingPause = false;
 
   if (currentSequence.length === 0) {
-    statusEl.textContent = "No notes available for this scale/difficulty.";
+    statusEl.textContent = "No notes available for this scale/difficulty/register selection.";
   } else {
     statusEl.textContent = "Play these notes in order.";
   }
@@ -295,7 +281,7 @@ async function startMicrophone() {
 
     retryBtn.hidden = true;
     stopBtn.disabled = false;
-    scaleSelect.disabled = true;
+    scaleRegisterControls.setDisabled(true);
     difficultySelect.disabled = true;
     isRunning = true;
     inBreathingPause = false;
@@ -339,13 +325,22 @@ function stopMicrophone() {
   inBreathingPause = false;
   retryBtn.hidden = false;
   stopBtn.disabled = true;
-  scaleSelect.disabled = false;
+  scaleRegisterControls.setDisabled(false);
   difficultySelect.disabled = false;
   statusEl.textContent = "Microphone is off.";
 }
 
 function init() {
   initializeTuning();
+  scaleRegisterControls = window.ClarinetScaleRegisterControls.init({
+    scaleSelect,
+    registerCheckboxes: {
+      chalumeau: regChalumeau,
+      clarion: regClarion,
+      altissimo: regAltissimo
+    },
+    defaultScale: "C_MAJOR"
+  });
   if (window.initReorderableWorkspace) {
     window.initReorderableWorkspace({
       workspaceSelector: "#play-these-workspace",

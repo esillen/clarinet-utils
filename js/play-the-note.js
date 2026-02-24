@@ -1,4 +1,4 @@
-const { TUNING_OFFSETS, SCALES } = window.ClarinetCore;
+const { TUNING_OFFSETS } = window.ClarinetCore;
 
 const currentTuningEl = document.getElementById("ptn-current-tuning");
 const scaleSelect = document.getElementById("ptn-scale");
@@ -26,12 +26,8 @@ let currentCandidate = null;
 let lastHitAt = 0;
 let isRunning = false;
 let currentTuning = "Bb";
+let scaleRegisterControls = null;
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
-const REGISTER_RANGES = {
-  chalumeau: { min: 52, max: 64 },
-  clarion: { min: 65, max: 79 },
-  altissimo: { min: 80, max: 96 }
-};
 
 function initializeTuning() {
   currentTuning = window.ClarinetCore.readTuning("Bb");
@@ -41,32 +37,7 @@ function initializeTuning() {
 }
 
 function getAllowedWrittenNotes() {
-  const pool = [];
-  const scale = SCALES[scaleSelect.value] || SCALES.C_MAJOR;
-  const allowedPitchClasses = new Set(scale.intervals.map((interval) => (scale.root + interval) % 12));
-
-  const addRange = (minMidi, maxMidi) => {
-    for (let midi = minMidi; midi <= maxMidi; midi += 1) {
-      const writtenPitchClass = ((midi % 12) + 12) % 12;
-      if (allowedPitchClasses.has(writtenPitchClass)) {
-        pool.push(midi);
-      }
-    }
-  };
-
-  if (regChalumeau.checked) {
-    addRange(REGISTER_RANGES.chalumeau.min, REGISTER_RANGES.chalumeau.max);
-  }
-
-  if (regClarion.checked) {
-    addRange(REGISTER_RANGES.clarion.min, REGISTER_RANGES.clarion.max);
-  }
-
-  if (regAltissimo.checked) {
-    addRange(REGISTER_RANGES.altissimo.min, REGISTER_RANGES.altissimo.max);
-  }
-
-  return pool;
+  return scaleRegisterControls.getScaleFilteredRegisterPool();
 }
 
 function randomTarget(previous = null) {
@@ -91,7 +62,7 @@ function renderTarget(writtenMidi) {
     notes: [{ writtenMidi, fill: "#10634f", stemColor: "#10634f" }],
     width: 420,
     height: 210,
-    scale: scaleSelect.value
+    scale: scaleRegisterControls.getScale()
   });
   svg.setAttribute("class", "staff-svg");
   svg.style.maxWidth = "100%";
@@ -209,6 +180,7 @@ async function startMicrophone() {
 
     retryBtn.hidden = true;
     stopBtn.disabled = false;
+    scaleRegisterControls.setDisabled(true);
     isRunning = true;
     runStartedAt = performance.now();
     hitCount = 0;
@@ -245,11 +217,21 @@ function stopMicrophone() {
   isRunning = false;
   stopBtn.disabled = true;
   retryBtn.hidden = false;
+  scaleRegisterControls.setDisabled(false);
   statusEl.textContent = "Microphone is off.";
 }
 
 function init() {
   initializeTuning();
+  scaleRegisterControls = window.ClarinetScaleRegisterControls.init({
+    scaleSelect,
+    registerCheckboxes: {
+      chalumeau: regChalumeau,
+      clarion: regClarion,
+      altissimo: regAltissimo
+    },
+    defaultScale: "C_MAJOR"
+  });
   if (window.initReorderableWorkspace) {
     window.initReorderableWorkspace({
       workspaceSelector: "#play-note-workspace",
