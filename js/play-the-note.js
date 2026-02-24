@@ -44,12 +44,11 @@ function getAllowedWrittenNotes() {
   const pool = [];
   const scale = SCALES[scaleSelect.value] || SCALES.C_MAJOR;
   const allowedPitchClasses = new Set(scale.intervals.map((interval) => (scale.root + interval) % 12));
-  const tuningOffset = TUNING_OFFSETS[currentTuning] || 0;
 
   const addRange = (minMidi, maxMidi) => {
     for (let midi = minMidi; midi <= maxMidi; midi += 1) {
-      const concertPitchClass = ((midi - tuningOffset) % 12 + 12) % 12;
-      if (allowedPitchClasses.has(concertPitchClass)) {
+      const writtenPitchClass = ((midi % 12) + 12) % 12;
+      if (allowedPitchClasses.has(writtenPitchClass)) {
         pool.push(midi);
       }
     }

@@ -14,6 +14,38 @@
       dyFactor: 0.4
     }
   };
+  const SHARP_SIGNATURE_POSITIONS = ["F5", "C5", "G5", "D5", "A4", "E5", "B4"];
+  const FLAT_SIGNATURE_POSITIONS = ["B4", "E5", "A4", "D5", "G4", "C5", "F5"];
+  const MAJOR_SCALE_INTERVALS = "0,2,4,5,7,9,11";
+  const NATURAL_MINOR_INTERVALS = "0,2,3,5,7,8,10";
+  const MAJOR_SIGNATURE_COUNT_BY_ROOT = {
+    0: 0,
+    1: 7,
+    2: 2,
+    3: -3,
+    4: 4,
+    5: -1,
+    6: 6,
+    7: 1,
+    8: -4,
+    9: 3,
+    10: -2,
+    11: 5
+  };
+  const MINOR_SIGNATURE_COUNT_BY_ROOT = {
+    0: -3,
+    1: 4,
+    2: -1,
+    3: 6,
+    4: 1,
+    5: -4,
+    6: 3,
+    7: -2,
+    8: 5,
+    9: 0,
+    10: 7,
+    11: 2
+  };
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -62,6 +94,17 @@
     return "";
   }
 
+  function parsePitchParts(noteName) {
+    const match = String(noteName || "").match(/^([A-G])([#b]?)/);
+    if (!match) {
+      return { letter: "", symbol: "" };
+    }
+    return {
+      letter: match[1],
+      symbol: match[2] === "#" ? "\u266F" : (match[2] === "b" ? "\u266D" : "")
+    };
+  }
+
   function preferFlatsForScale(scale) {
     const key = String(scale || "CHROMATIC").toUpperCase();
     const SHARP_SCALES = new Set([
@@ -83,7 +126,35 @@
     return !SHARP_SCALES.has(key);
   }
 
-  function buildLayout(width, height, count) {
+  function getScaleDefinition(scale) {
+    if (!window.ClarinetCore || !window.ClarinetCore.SCALES) {
+      return null;
+    }
+    if (typeof scale === "string") {
+      return window.ClarinetCore.SCALES[scale] || null;
+    }
+    if (scale && Number.isFinite(scale.root) && Array.isArray(scale.intervals)) {
+      return scale;
+    }
+    return null;
+  }
+
+  function getScaleSignatureCount(scale) {
+    const def = getScaleDefinition(scale);
+    if (!def || !Number.isFinite(def.root) || !Array.isArray(def.intervals)) {
+      return 0;
+    }
+    const intervalsKey = def.intervals.join(",");
+    if (intervalsKey === MAJOR_SCALE_INTERVALS) {
+      return MAJOR_SIGNATURE_COUNT_BY_ROOT[def.root] || 0;
+    }
+    if (intervalsKey === NATURAL_MINOR_INTERVALS) {
+      return MINOR_SIGNATURE_COUNT_BY_ROOT[def.root] || 0;
+    }
+    return 0;
+  }
+
+  function buildLayout(width, height, count, signatureCount) {
     const spacing = clamp(Math.round(height * 0.045), 6, 9);
     const staffTop = Math.round((height - 4 * spacing) / 2);
     const staffLeft = Math.round(spacing * 6.2);
@@ -93,7 +164,8 @@
     const clefSize = Math.round(spacing * 7.9);
 
     const usableCount = Math.max(count, 1);
-    const startX = staffLeft + spacing * 6.2;
+    const keySignatureWidth = Math.max(0, signatureCount) * spacing * 0.88;
+    const startX = staffLeft + spacing * 6.2 + keySignatureWidth;
     const endX = staffRight - spacing * 1.2;
     const step = usableCount > 1 ? (endX - startX) / (usableCount - 1) : 0;
 
@@ -107,6 +179,8 @@
       clefSize,
       startX,
       step,
+      keySignatureStartX: staffLeft + spacing * 2.95,
+      keySignatureStepX: spacing * 0.88,
       dualDx: spacing * 1.9,
       noteHeadRx: spacing * 0.85,
       noteHeadRy: spacing * 0.62,
@@ -142,6 +216,30 @@
     };
   }
 
+  function buildKeySignature(scale, staffTop, spacing) {
+    const signedCount = getScaleSignatureCount(scale);
+    if (!signedCount) {
+      return { items: [], activeAccidentals: new Set() };
+    }
+    const count = Math.min(7, Math.abs(signedCount));
+    const symbol = signedCount > 0 ? "\u266F" : "\u266D";
+    const positions = signedCount > 0 ? SHARP_SIGNATURE_POSITIONS : FLAT_SIGNATURE_POSITIONS;
+    const items = [];
+    const activeAccidentals = new Set();
+
+    for (let i = 0; i < count; i += 1) {
+      const spelling = positions[i];
+      const y = noteYForNamedNote(spelling, staffTop, spacing);
+      const parts = parsePitchParts(spelling);
+      if (parts.letter && symbol) {
+        activeAccidentals.add(`${parts.letter}${symbol}`);
+      }
+      items.push({ y, symbol });
+    }
+
+    return { items, activeAccidentals };
+  }
+
   // Main API: only width, height, scale, notes are required.
   function renderNoteSequenceSvg(options = {}) {
     const notes = Array.isArray(options.notes) ? options.notes : [];
@@ -155,7 +253,9 @@
     const staffColor = options.staffColor || "#1a2a27";
     const showClef = options.showClef !== false;
 
-    const layout = buildLayout(width, height, notes.length);
+    const signatureCount = Math.min(7, Math.abs(getScaleSignatureCount(scale)));
+    const layout = buildLayout(width, height, notes.length, signatureCount);
+    const normalizedKeySignature = buildKeySignature(scale, layout.staffTop, layout.spacing);
     const preferFlats = preferFlatsForScale(scale);
 
     const svg = createSvgElement("svg");
@@ -185,6 +285,17 @@
       svg.appendChild(clef);
     }
 
+    const signatureMetrics = getAccidentalMetrics(layout, normalizedKeySignature.items[0]?.symbol || "\u266F");
+    normalizedKeySignature.items.forEach((item, index) => {
+      const sig = createSvgElement("text");
+      sig.setAttribute("x", String(layout.keySignatureStartX + index * layout.keySignatureStepX));
+      sig.setAttribute("y", String(item.y + signatureMetrics.dy));
+      sig.setAttribute("font-size", String(signatureMetrics.size));
+      sig.setAttribute("font-family", "serif");
+      sig.textContent = item.symbol;
+      svg.appendChild(sig);
+    });
+
     const noteSpecs = [];
     notes.forEach((note, noteIndex) => {
       if (!note || note.visible === false) {
@@ -206,6 +317,7 @@
           y: noteYForNamedNote(spelling, layout.staffTop, layout.spacing),
           x: xCenter + (spellings.length > 1 ? (spellingIndex === 0 ? -layout.dualDx : layout.dualDx) : 0),
           accidental: parseAccidental(spelling),
+          pitchParts: parsePitchParts(spelling),
           fill: note.fill || noteHeadFill,
           stemColor: note.stemColor || stemColorDefault
         });
@@ -260,6 +372,12 @@
       svg.appendChild(stem);
 
       if (spec.accidental) {
+        const accidentalKey = spec.pitchParts && spec.pitchParts.letter
+          ? `${spec.pitchParts.letter}${spec.accidental}`
+          : "";
+        if (accidentalKey && normalizedKeySignature.activeAccidentals.has(accidentalKey)) {
+          return;
+        }
         const accidentalMetrics = getAccidentalMetrics(layout, spec.accidental);
         const accidental = createSvgElement("text");
         accidental.setAttribute("x", String(spec.x - accidentalMetrics.dx));

@@ -141,11 +141,9 @@ function getSelectableNotePool(config) {
 
   const scale = SCALES[scaleSelect.value];
   const allowedPitchClasses = new Set(scale.intervals.map((interval) => (scale.root + interval) % 12));
-  const tuningOffset = TUNING_OFFSETS[currentTuning] || 0;
-  const scaleFiltered = candidatePool.filter((writtenMidi) => {
-    const concertPitchClass = ((writtenMidi - tuningOffset) % 12 + 12) % 12;
-    return allowedPitchClasses.has(concertPitchClass);
-  });
+  const scaleFiltered = candidatePool.filter((writtenMidi) => (
+    allowedPitchClasses.has(((writtenMidi % 12) + 12) % 12)
+  ));
 
   return scaleFiltered.length > 0 ? scaleFiltered : candidatePool;
 }

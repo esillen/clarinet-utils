@@ -2,6 +2,48 @@ const showcaseGrid = document.getElementById("staff-showcase-grid");
 
 const SHOWCASE_CASES = [
   {
+    title: "Scale Check · C Major",
+    width: 980,
+    height: 220,
+    scale: "C_MAJOR",
+    notes: [60, 62, 64, 65, 67, 69, 71, 72]
+  },
+  {
+    title: "Scale Check · G Major",
+    width: 980,
+    height: 220,
+    scale: "G_MAJOR",
+    notes: [67, 69, 71, 72, 74, 76, 78, 79]
+  },
+  {
+    title: "Scale Check · D Major",
+    width: 980,
+    height: 220,
+    scale: "D_MAJOR",
+    notes: [62, 64, 66, 67, 69, 71, 73, 74]
+  },
+  {
+    title: "Scale Check · F Major",
+    width: 980,
+    height: 220,
+    scale: "F_MAJOR",
+    notes: [65, 67, 69, 70, 72, 74, 76, 77]
+  },
+  {
+    title: "Scale Check · B♭ Major",
+    width: 980,
+    height: 220,
+    scale: "BB_MAJOR",
+    notes: [58, 60, 62, 63, 65, 67, 69, 70]
+  },
+  {
+    title: "Scale Check · A Minor",
+    width: 980,
+    height: 220,
+    scale: "A_MINOR",
+    notes: [57, 59, 60, 62, 64, 65, 67, 69]
+  },
+  {
     title: "Single Note · Medium · C Major",
     width: 420,
     height: 210,
