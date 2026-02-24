@@ -99,6 +99,11 @@ function noteYForStaff(midi, staffTop, spacing) {
   return Math.round(rawY / slot) * slot;
 }
 
+function accidentalForMidi(midi) {
+  const pitchClass = ((midi % 12) + 12) % 12;
+  return [1, 3, 6, 8, 10].includes(pitchClass) ? "\u266F/\u266D" : "";
+}
+
 function renderTarget(writtenMidi) {
   const width = 420;
   const height = 210;
@@ -174,6 +179,17 @@ function renderTarget(writtenMidi) {
   stem.setAttribute("stroke", "#10634f");
   stem.setAttribute("stroke-width", "1.4");
   svg.appendChild(stem);
+
+  const accidental = accidentalForMidi(writtenMidi);
+  if (accidental) {
+    const accidentalText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    accidentalText.setAttribute("x", String(x - 38));
+    accidentalText.setAttribute("y", String(y + 4));
+    accidentalText.setAttribute("font-size", "18");
+    accidentalText.setAttribute("font-family", "serif");
+    accidentalText.textContent = accidental;
+    svg.appendChild(accidentalText);
+  }
 
   scoreEl.innerHTML = "";
   scoreEl.appendChild(svg);

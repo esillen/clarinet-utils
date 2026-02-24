@@ -35,114 +35,38 @@ function initializeTuning() {
   }
 }
 
-function renderStaff(midi) {
-  const width = 360;
-  const height = 190;
-  const left = 48;
-  const right = width - 20;
-  const staffTop = 52;
-  const stepPx = 7;
-  const refStep = 4 * 7 + 2;
-
-  const noteName = window.ClarinetCore.midiToName(midi, true);
-  const pitch = noteName.slice(0, -1);
-  const octave = Number(noteName.slice(-1));
-  const map = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
-  const letter = pitch.charAt(0);
-  const diatonic = octave * 7 + map[letter];
-  const stepFromE4 = diatonic - refStep;
-  const noteY = staffTop + 4 * stepPx - stepFromE4 * (stepPx / 2);
-
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.setAttribute("class", "staff-svg");
-
-  for (let i = 0; i < 5; i += 1) {
-    const y = staffTop + i * stepPx;
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", left);
-    line.setAttribute("x2", right);
-    line.setAttribute("y1", y);
-    line.setAttribute("y2", y);
-    line.setAttribute("stroke", "#1a2a27");
-    line.setAttribute("stroke-width", "1.2");
-    svg.appendChild(line);
-  }
-
-  const clef = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  clef.setAttribute("x", "12");
-  clef.setAttribute("y", "80");
-  clef.setAttribute("font-size", "58");
-  clef.setAttribute("font-family", "serif");
-  clef.textContent = "\uD834\uDD1E";
-  svg.appendChild(clef);
-
-  const noteX = 175;
-
-  const minStaffY = staffTop;
-  const maxStaffY = staffTop + 4 * stepPx;
-  const ledgerYs = [];
-
-  if (noteY < minStaffY - stepPx / 2) {
-    for (let y = minStaffY - stepPx; y >= noteY - 1; y -= stepPx) {
-      ledgerYs.push(y);
-    }
-  } else if (noteY > maxStaffY + stepPx / 2) {
-    for (let y = maxStaffY + stepPx; y <= noteY + 1; y += stepPx) {
-      ledgerYs.push(y);
-    }
-  }
-
-  ledgerYs.forEach((y) => {
-    const ledger = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    ledger.setAttribute("x1", noteX - 18);
-    ledger.setAttribute("x2", noteX + 18);
-    ledger.setAttribute("y1", y);
-    ledger.setAttribute("y2", y);
-    ledger.setAttribute("stroke", "#1a2a27");
-    ledger.setAttribute("stroke-width", "1.2");
-    svg.appendChild(ledger);
+function renderStaff(midi, noteLabel = "") {
+  const svg = window.ClarinetStaffRenderer.renderStaffSvg({
+    writtenMidi: midi,
+    noteLabel,
+    className: "staff-svg",
+    width: 360,
+    height: 190,
+    left: 48,
+    right: 340,
+    staffTop: 52,
+    spacing: 7,
+    noteX: 175,
+    dualDx: 20,
+    noteHeadRx: 10,
+    noteHeadRy: 7,
+    noteHeadFill: "#122420",
+    noteRotateDeg: -20,
+    stemLength: 34,
+    stemWidth: 1.6,
+    stemColor: "#122420",
+    accidentalDx: 28,
+    accidentalDy: 4,
+    accidentalSize: 19,
+    ledgerHalfWidth: 18,
+    ledgerColor: "#1a2a27",
+    ledgerWidth: 1.2,
+    staffColor: "#1a2a27",
+    staffWidth: 1.2,
+    clefX: 12,
+    clefY: 80,
+    clefSize: 58
   });
-
-  const noteHead = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-  noteHead.setAttribute("cx", String(noteX));
-  noteHead.setAttribute("cy", String(noteY));
-  noteHead.setAttribute("rx", "10");
-  noteHead.setAttribute("ry", "7");
-  noteHead.setAttribute("transform", `rotate(-20 ${noteX} ${noteY})`);
-  noteHead.setAttribute("fill", "#122420");
-  svg.appendChild(noteHead);
-
-  if (noteY > staffTop + 2 * stepPx) {
-    const stem = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    stem.setAttribute("x1", String(noteX + 9));
-    stem.setAttribute("x2", String(noteX + 9));
-    stem.setAttribute("y1", String(noteY));
-    stem.setAttribute("y2", String(noteY - 34));
-    stem.setAttribute("stroke", "#122420");
-    stem.setAttribute("stroke-width", "1.6");
-    svg.appendChild(stem);
-  } else {
-    const stem = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    stem.setAttribute("x1", String(noteX - 9));
-    stem.setAttribute("x2", String(noteX - 9));
-    stem.setAttribute("y1", String(noteY));
-    stem.setAttribute("y2", String(noteY + 34));
-    stem.setAttribute("stroke", "#122420");
-    stem.setAttribute("stroke-width", "1.6");
-    svg.appendChild(stem);
-  }
-
-  if (pitch.includes("#") || pitch.includes("b")) {
-    const accidental = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    accidental.setAttribute("x", String(noteX - 26));
-    accidental.setAttribute("y", String(noteY + 4));
-    accidental.setAttribute("font-size", "24");
-    accidental.setAttribute("font-family", "serif");
-    accidental.textContent = pitch.includes("#") ? "\u266F" : "\u266D";
-    svg.appendChild(accidental);
-  }
-
   staffEl.innerHTML = "";
   staffEl.appendChild(svg);
 }
@@ -341,7 +265,17 @@ function renderFingerings(writtenMidi) {
   fingeringNoteEl.textContent = `Showing ${entry.fingerings.length} fingering option(s) for ${entry.noteLabel}.`;
 
   entry.fingerings.forEach((fingering) => {
-    fingeringListEl.appendChild(renderFingeringCard(fingering, { compact: true, showVisual: true }));
+    fingeringListEl.appendChild(
+      renderFingeringCard(fingering, {
+        compact: true,
+        showVisual: true,
+        compactShowImage: true,
+        horizontal: true,
+        hideKeys: true,
+        showHoleOverlay: true,
+        writtenMidi
+      })
+    );
   });
 
   if (fingeringVisualRefsEl) {
@@ -367,7 +301,8 @@ function renderFromMidi(concertMidi, detectedFrequency = null) {
     concertFreqEl.textContent = `${detectedFrequency.toFixed(2)} Hz (${centsPrefix}${cents} cents)`;
   }
 
-  renderStaff(writtenMidi);
+  const entry = getEntry(writtenMidi);
+  renderStaff(writtenMidi, entry ? entry.noteLabel : writtenLabel);
   renderFingerings(writtenMidi);
 }
 

@@ -15,96 +15,38 @@ function getConcertNoteLabel(writtenMidi) {
   return window.ClarinetCore.midiToName(concertMidi, true);
 }
 
-function noteYForStaff(midi, staffTop, spacing) {
-  const note = window.ClarinetCore.midiToName(midi, true);
-  const pitch = note.slice(0, -1);
-  const octave = Number(note.slice(-1));
-  const map = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
-  const letter = pitch.charAt(0);
-  const diatonic = octave * 7 + map[letter];
-  const ref = 4 * 7 + 2;
-  const step = diatonic - ref;
-  const slot = spacing / 2;
-  const rawY = staffTop + 4 * spacing - step * slot;
-  return Math.round(rawY / slot) * slot;
-}
-
-function renderMiniStaff(writtenMidi) {
-  const width = 140;
-  const height = 90;
-  const left = 30;
-  const right = width - 8;
-  const staffTop = 28;
-  const spacing = 7;
-  const x = 82;
-  const y = noteYForStaff(writtenMidi, staffTop, spacing);
-
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.setAttribute("class", "chart-staff-svg");
-
-  for (let i = 0; i < 5; i += 1) {
-    const lineY = staffTop + i * spacing;
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", String(left));
-    line.setAttribute("x2", String(right));
-    line.setAttribute("y1", String(lineY));
-    line.setAttribute("y2", String(lineY));
-    line.setAttribute("stroke", "#1a2a27");
-    line.setAttribute("stroke-width", "1");
-    svg.appendChild(line);
-  }
-
-  const clef = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  clef.setAttribute("x", "4");
-  clef.setAttribute("y", "52");
-  clef.setAttribute("font-size", "34");
-  clef.setAttribute("font-family", "serif");
-  clef.textContent = "\uD834\uDD1E";
-  svg.appendChild(clef);
-
-  const ledgerYs = [];
-  if (y < staffTop - spacing / 2) {
-    for (let ly = staffTop - spacing; ly >= y - 1; ly -= spacing) {
-      ledgerYs.push(ly);
-    }
-  } else if (y > staffTop + 4 * spacing + spacing / 2) {
-    for (let ly = staffTop + 5 * spacing; ly <= y + 1; ly += spacing) {
-      ledgerYs.push(ly);
-    }
-  }
-
-  ledgerYs.forEach((ly) => {
-    const ledger = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    ledger.setAttribute("x1", String(x - 11));
-    ledger.setAttribute("x2", String(x + 11));
-    ledger.setAttribute("y1", String(ly));
-    ledger.setAttribute("y2", String(ly));
-    ledger.setAttribute("stroke", "#122420");
-    ledger.setAttribute("stroke-width", "1");
-    svg.appendChild(ledger);
+function renderMiniStaff(writtenMidi, noteLabel = "") {
+  return window.ClarinetStaffRenderer.renderStaffSvg({
+    writtenMidi,
+    noteLabel,
+    className: "chart-staff-svg",
+    width: 140,
+    height: 90,
+    left: 30,
+    right: 132,
+    staffTop: 28,
+    spacing: 7,
+    noteX: 82,
+    dualDx: 15,
+    noteHeadRx: 7,
+    noteHeadRy: 5,
+    noteHeadFill: "#10634f",
+    noteRotateDeg: -20,
+    stemLength: 22,
+    stemWidth: 1.1,
+    stemColor: "#10634f",
+    accidentalDx: 22,
+    accidentalDy: 3,
+    accidentalSize: 11,
+    ledgerHalfWidth: 10,
+    ledgerColor: "#122420",
+    ledgerWidth: 1,
+    staffColor: "#1a2a27",
+    staffWidth: 1,
+    clefX: 4,
+    clefY: 52,
+    clefSize: 34
   });
-
-  const noteHead = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-  noteHead.setAttribute("cx", String(x));
-  noteHead.setAttribute("cy", String(y));
-  noteHead.setAttribute("rx", "7");
-  noteHead.setAttribute("ry", "5");
-  noteHead.setAttribute("transform", `rotate(-20 ${x} ${y})`);
-  noteHead.setAttribute("fill", "#10634f");
-  svg.appendChild(noteHead);
-
-  const stem = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  const stemUp = y > staffTop + 2 * spacing;
-  stem.setAttribute("x1", String(stemUp ? x + 6 : x - 6));
-  stem.setAttribute("x2", String(stemUp ? x + 6 : x - 6));
-  stem.setAttribute("y1", String(y));
-  stem.setAttribute("y2", String(stemUp ? y - 22 : y + 22));
-  stem.setAttribute("stroke", "#10634f");
-  stem.setAttribute("stroke-width", "1.1");
-  svg.appendChild(stem);
-
-  return svg;
 }
 
 function populateNoteFilter() {
@@ -138,42 +80,62 @@ function matchesSearch(entry, fingering, query) {
 }
 
 function renderEntry(entry, fingerings) {
-  const group = document.createElement("details");
-  group.className = "chart-entry";
-  if (noteFilterEl.value !== "all") {
-    group.open = true;
-  }
+  const group = document.createElement("section");
+  group.className = "chart-note-block";
 
-  const summary = document.createElement("summary");
-  summary.className = "chart-entry-summary";
-  summary.textContent = `${entry.noteLabel} · ${fingerings.length} fingering(s)`;
+  const title = document.createElement("h3");
+  title.className = "chart-note-title";
+  title.textContent = `${entry.noteLabel} (written ${window.ClarinetCore.midiToName(entry.writtenMidi, true)})`;
+  group.appendChild(title);
 
   const subtitle = document.createElement("p");
-  subtitle.className = "muted";
-  subtitle.textContent = `Written: ${window.ClarinetCore.midiToName(entry.writtenMidi, true)} · Concert: ${getConcertNoteLabel(entry.writtenMidi)}`;
+  subtitle.className = "muted chart-note-subtitle";
+  subtitle.textContent = `Concert: ${getConcertNoteLabel(entry.writtenMidi)}`;
+  group.appendChild(subtitle);
 
-  const preview = document.createElement("div");
-  preview.className = "chart-note-preview";
-  preview.appendChild(renderMiniStaff(entry.writtenMidi));
+  const rows = document.createElement("div");
+  rows.className = "chart-note-rows";
 
-  const list = document.createElement("ul");
-  list.className = "chart-fingering-list";
+  fingerings.forEach((fingering, index) => {
+    const row = document.createElement("article");
+    row.className = "chart-fingering-row";
 
-  fingerings.forEach((fingering) => {
-    const item = document.createElement("li");
-    item.className = "chart-fingering-item";
-    item.innerHTML = [
-      `<span class="chart-fingering-type">${fingering.type}</span>`,
-      `<strong>${fingering.name}</strong>`,
-      `<span class="chart-fingering-info">${fingering.info}</span>`
-    ].join(" · ");
-    list.appendChild(item);
+    if (index === 0) {
+      const clefCol = document.createElement("div");
+      clefCol.className = "chart-clef-col";
+      clefCol.appendChild(renderMiniStaff(entry.writtenMidi, entry.noteLabel));
+      row.appendChild(clefCol);
+    } else {
+      const spacer = document.createElement("div");
+      spacer.className = "chart-clef-spacer";
+      spacer.setAttribute("aria-hidden", "true");
+      row.appendChild(spacer);
+    }
+
+    const guide = window.ClarinetFingerings.getVisualGuide(fingering.type);
+    const center = document.createElement("div");
+    center.className = "chart-fingering-visual";
+    const visualFrame = window.ClarinetFingerings.renderFingeringVisualFrame(fingering, {
+      visualGuide: guide,
+      showHoleOverlay: true,
+      writtenMidi: entry.writtenMidi
+    });
+    center.appendChild(visualFrame);
+    row.appendChild(center);
+
+    const text = document.createElement("div");
+    text.className = "chart-fingering-text";
+    text.innerHTML = [
+      `<p><span class="chart-fingering-type">${fingering.type}</span> <strong>${fingering.name}</strong></p>`,
+      `<p class="chart-fingering-keys"><strong>Keys:</strong> ${fingering.keys}</p>`,
+      `<p class="chart-fingering-info">${fingering.info}</p>`
+    ].join("");
+    row.appendChild(text);
+
+    rows.appendChild(row);
   });
 
-  group.appendChild(summary);
-  group.appendChild(subtitle);
-  group.appendChild(preview);
-  group.appendChild(list);
+  group.appendChild(rows);
   return group;
 }
 
@@ -209,7 +171,7 @@ function render() {
     resultsEl.appendChild(renderEntry(entry, filteredFingerings));
   });
 
-  summaryEl.textContent = `Showing ${fingeringCount} fingering(s) across ${noteMatchCount} note(s).`;
+  summaryEl.textContent = `${noteMatchCount} notes · ${fingeringCount} fingerings`;
 }
 
 function init() {

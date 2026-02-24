@@ -112,6 +112,14 @@ input[type="search"] {
   font-family: inherit;
 }
 
+textarea {
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
 button {
   background: var(--accent);
   border-color: var(--accent);
@@ -209,6 +217,17 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   align-items: end;
 }
 
+.written-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.written-inline .staff-svg {
+  max-width: 175px;
+  margin-left: 0.2rem;
+}
+
 .note-pair-item p.muted {
   margin-bottom: 0.2rem;
 }
@@ -248,53 +267,79 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
 }
 
 .chart-results {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
 }
 
-.chart-entry {
+.chart-note-block {
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 0.45rem 0.55rem;
+  padding: 0.55rem 0.6rem;
   background: #f9fcfb;
 }
 
-.chart-entry-summary {
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 0.93rem;
+.chart-note-title {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
 }
 
-.chart-entry > .muted {
-  margin: 0.42rem 0 0.4rem;
-  font-size: 0.82rem;
+.chart-note-subtitle {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
 }
 
-.chart-note-preview {
-  margin: 0 0 0.35rem;
+.chart-note-rows {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chart-fingering-row {
+  display: grid;
+  grid-template-columns: 128px 132px minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+  padding-top: 0.26rem;
+  border-top: 1px dashed #d7e7e1;
+}
+
+.chart-fingering-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.chart-clef-col,
+.chart-clef-spacer {
+  min-height: 84px;
 }
 
 .chart-staff-svg {
   display: block;
-  width: 100%;
-  max-width: 142px;
+  width: 124px;
   height: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 
-.chart-fingering-list {
-  margin: 0;
-  padding-left: 1rem;
-  display: grid;
-  gap: 0.3rem;
+.chart-fingering-visual .fingering-image-frame {
+  width: 126px;
 }
 
-.chart-fingering-item {
+.chart-fingering-visual .fingering-image-frame > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chart-fingering-text p {
+  margin: 0 0 0.22rem;
   font-size: 0.82rem;
-  line-height: 1.28;
+  line-height: 1.25;
+}
+
+.chart-fingering-text p:last-child {
+  margin-bottom: 0;
 }
 
 .chart-fingering-type {
@@ -311,6 +356,11 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   color: var(--muted);
 }
 
+.chart-fingering-keys {
+  color: #27443c;
+  overflow-wrap: anywhere;
+}
+
 .fingering-card {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -324,6 +374,10 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
 
 .fingering-card p {
   margin-bottom: 0.35rem;
+}
+
+.fingering-content {
+  min-width: 0;
 }
 
 .fingering-card-compact {
@@ -347,14 +401,51 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   color: var(--muted);
 }
 
+.fingering-card-horizontal {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.fingering-card-horizontal .fingering-visual {
+  margin: 0;
+}
+
+.fingering-card-horizontal .fingering-visual figcaption {
+  margin-top: 0.18rem;
+  font-size: 0.74rem;
+}
+
+.fingering-image-frame {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.fingering-inline-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.fingering-overlay-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .fingering-visual {
   margin: 0.55rem 0 0;
 }
 
 .fingering-visual img {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  display: block;
   background: #fff;
 }
 
@@ -421,6 +512,110 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   display: flex;
   gap: 0.7rem;
   flex-wrap: wrap;
+}
+
+.mapping-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.mapping-row {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem;
+  background: #f9fcfb;
+}
+
+.mapping-key {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #15332c;
+}
+
+.mapping-canvas {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.45rem;
+  background: #fff;
+  min-height: 260px;
+}
+
+.mapping-template-svg {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.mapping-template-svg .mapping-layer-group.is-unselected {
+  opacity: 0.18;
+}
+
+.mapping-template-svg .mapping-layer-group.is-selected {
+  opacity: 1;
+}
+
+.mapping-template-svg .mapping-layer-group.is-selected path,
+.mapping-template-svg .mapping-layer-group.is-selected circle,
+.mapping-template-svg .mapping-layer-group.is-selected ellipse,
+.mapping-template-svg .mapping-layer-group.is-selected rect,
+.mapping-template-svg .mapping-layer-group.is-selected polygon,
+.mapping-template-svg .mapping-layer-group.is-selected polyline,
+.mapping-template-svg .mapping-layer-group.is-selected line {
+  stroke: #0a0a0a !important;
+  fill: #0a0a0a !important;
+}
+
+.mapping-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+
+.mapping-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #eef7f3;
+  color: #16372f;
+  padding: 0.16rem 0.48rem;
+  font-weight: 700;
+}
+
+.mapping-layer-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.mapping-layer-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #24463e;
+  border-radius: 999px;
+  padding: 0.18rem 0.52rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mapping-layer-btn.is-selected {
+  background: #10634f;
+  border-color: #10634f;
+  color: #fff;
+}
+
+.mapping-json {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  margin-bottom: 0.65rem;
 }
 
 .register-options {
@@ -555,31 +750,73 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
     white-space: nowrap;
   }
 
+  .written-inline {
+    gap: 0.3rem;
+  }
+
+  .written-inline .staff-svg {
+    max-width: 110px;
+  }
+
   .chart-results {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem;
   }
 
-  .chart-entry {
-    padding: 0.4rem 0.45rem;
+  .chart-note-block {
+    padding: 0.42rem 0.46rem;
   }
 
-  .chart-entry-summary {
-    font-size: 0.79rem;
-    line-height: 1.2;
+  .chart-note-title {
+    font-size: 0.84rem;
   }
 
-  .chart-entry > .muted {
-    font-size: 0.72rem;
-    margin: 0.26rem 0 0.26rem;
+  .chart-note-subtitle {
+    font-size: 0.7rem;
+    margin-bottom: 0.24rem;
   }
 
-  .chart-note-preview {
-    margin-bottom: 0.22rem;
+  .chart-note-rows {
+    gap: 0.32rem;
+  }
+
+  .chart-fingering-row {
+    grid-template-columns: 80px 82px minmax(0, 1fr);
+    gap: 0.3rem;
+    padding-top: 0.22rem;
+  }
+
+  .chart-clef-col,
+  .chart-clef-spacer {
+    min-height: 56px;
   }
 
   .chart-staff-svg {
-    max-width: 110px;
+    width: 78px;
+    border-radius: 6px;
+  }
+
+  .chart-fingering-visual .fingering-image-frame {
+    width: 80px;
+  }
+
+  .chart-fingering-visual .fingering-image-frame > img {
+    border-radius: 6px;
+  }
+
+  .chart-fingering-text p {
+    font-size: 0.7rem;
+    margin-bottom: 0.16rem;
+    line-height: 1.17;
+  }
+
+  .chart-fingering-keys {
+    font-size: 0.66rem;
+    line-height: 1.16;
+  }
+
+  .chart-fingering-type {
+    font-size: 0.62rem;
+    padding: 0.03rem 0.26rem;
   }
 
   .chart-fingering-list {
@@ -618,4 +855,14 @@ body.reordering-active .reorderable-panel:not(.is-reordering) {
   .fingering-guide-link {
     font-size: 0.74rem;
   }
+
+  .fingering-card-horizontal {
+    grid-template-columns: 108px minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
+  .fingering-card-horizontal .fingering-visual figcaption {
+    font-size: 0.68rem;
+  }
+
 }

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layer Mapping</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav">
+      <a href="index.html">← Back to utilities</a>
+    </nav>
+
+    <header>
+      <h1>Layer Mapping</h1>
+      <p>Map WFG compact fingering symbols (for example <code>L:T</code>, <code>L:1</code>, <code>R:3</code>) to template SVG layer names.</p>
+    </header>
+
+    <div id="layer-mapping-workspace" class="workspace">
+      <section class="controls utility-panel">
+        <p class="status">Template source: <code>assets/clarinet-fingering-template.svg</code></p>
+        <p id="mapping-status" class="status muted">Loading layers...</p>
+        <div class="control-actions">
+          <button id="mapping-save" type="button">Save Mapping</button>
+          <button id="mapping-infer" type="button">Infer From Layer Names</button>
+          <button id="mapping-reset" type="button">Reset To Defaults</button>
+          <button id="mapping-refresh" type="button">Reload Layers</button>
+        </div>
+      </section>
+
+      <section class="fingerings utility-panel">
+        <h2>Fingering Text → Layer Mapping</h2>
+        <p id="mapping-key-count" class="muted"></p>
+        <p class="muted">This mapping drives rendered fingering overlays. Select one or more layer labels for each text token.</p>
+        <div id="mapping-grid" class="mapping-grid"></div>
+      </section>
+
+      <section class="fingerings utility-panel">
+        <h2>Import / Export</h2>
+        <p class="muted">Edit JSON directly, then import it.</p>
+        <textarea id="mapping-json" class="mapping-json" spellcheck="false"></textarea>
+        <div class="control-actions">
+          <button id="mapping-export" type="button">Export Current</button>
+          <button id="mapping-import" type="button">Import JSON</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/music-core.js"></script>
+  <script src="js/fingering-db.js"></script>
+  <script src="js/layer-mapping.js"></script>
+</body>
+</html>
