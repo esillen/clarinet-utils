@@ -5,7 +5,7 @@ const scaleSelect = document.getElementById("ptn-scale");
 const regChalumeau = document.getElementById("reg-chalumeau");
 const regClarion = document.getElementById("reg-clarion");
 const regAltissimo = document.getElementById("reg-altissimo");
-const retryBtn = document.getElementById("ptn-retry");
+const startBtn = document.getElementById("ptn-retry");
 const stopBtn = document.getElementById("ptn-stop");
 const statusEl = document.getElementById("ptn-status");
 const hitsEl = document.getElementById("ptn-hits");
@@ -178,7 +178,7 @@ async function startMicrophone() {
     analyser.smoothingTimeConstant = 0.8;
     source.connect(analyser);
 
-    retryBtn.hidden = true;
+    startBtn.disabled = true;
     stopBtn.disabled = false;
     scaleRegisterControls.setDisabled(true);
     isRunning = true;
@@ -192,7 +192,7 @@ async function startMicrophone() {
     statusEl.textContent = "Microphone started. Play the target note.";
     tick();
   } catch (error) {
-    retryBtn.hidden = false;
+    startBtn.disabled = false;
     statusEl.textContent = `Could not access microphone: ${error.message}`;
   }
 }
@@ -216,7 +216,7 @@ function stopMicrophone() {
   analyser = null;
   isRunning = false;
   stopBtn.disabled = true;
-  retryBtn.hidden = false;
+  startBtn.disabled = false;
   scaleRegisterControls.setDisabled(false);
   statusEl.textContent = "Microphone is off.";
 }
@@ -246,11 +246,10 @@ function init() {
       setNextTarget();
     });
   });
-  retryBtn.addEventListener("click", startMicrophone);
+  startBtn.addEventListener("click", startMicrophone);
   stopBtn.addEventListener("click", stopMicrophone);
 
-  scoreEl.innerHTML = "<p class=\"muted\">Waiting for microphone...</p>";
-  startMicrophone();
+  scoreEl.innerHTML = "<p class=\"muted\">Press Start to begin.</p>";
 }
 
 init();

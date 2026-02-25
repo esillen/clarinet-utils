@@ -24,7 +24,7 @@ const difficultySelect = document.getElementById("ptn2-difficulty");
 const regChalumeau = document.getElementById("ptn2-reg-chalumeau");
 const regClarion = document.getElementById("ptn2-reg-clarion");
 const regAltissimo = document.getElementById("ptn2-reg-altissimo");
-const retryBtn = document.getElementById("ptn2-retry");
+const startBtn = document.getElementById("ptn2-retry");
 const stopBtn = document.getElementById("ptn2-stop");
 const statusEl = document.getElementById("ptn2-status");
 const roundsEl = document.getElementById("ptn2-rounds");
@@ -279,7 +279,7 @@ async function startMicrophone() {
     analyser.smoothingTimeConstant = 0.8;
     source.connect(analyser);
 
-    retryBtn.hidden = true;
+    startBtn.disabled = true;
     stopBtn.disabled = false;
     scaleRegisterControls.setDisabled(true);
     difficultySelect.disabled = true;
@@ -297,7 +297,7 @@ async function startMicrophone() {
     beginNextSequence();
     tick();
   } catch (error) {
-    retryBtn.hidden = false;
+    startBtn.disabled = false;
     statusEl.textContent = `Could not access microphone: ${error.message}`;
   }
 }
@@ -323,7 +323,7 @@ function stopMicrophone() {
   analyser = null;
   isRunning = false;
   inBreathingPause = false;
-  retryBtn.hidden = false;
+  startBtn.disabled = false;
   stopBtn.disabled = true;
   scaleRegisterControls.setDisabled(false);
   difficultySelect.disabled = false;
@@ -349,11 +349,10 @@ function init() {
     });
   }
 
-  retryBtn.addEventListener("click", startMicrophone);
+  startBtn.addEventListener("click", startMicrophone);
   stopBtn.addEventListener("click", stopMicrophone);
 
   renderSequence();
-  startMicrophone();
 }
 
 init();
