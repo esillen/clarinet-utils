@@ -341,13 +341,6 @@ function init() {
     },
     defaultScale: "C_MAJOR"
   });
-  if (window.initReorderableWorkspace) {
-    window.initReorderableWorkspace({
-      workspaceSelector: "#play-these-workspace",
-      itemSelector: ".game-controls, .game-info, .score-panel",
-      storageKey: "panel_order_play_these_notes_v1"
-    });
-  }
 
   startBtn.addEventListener("click", startMicrophone);
   stopBtn.addEventListener("click", stopMicrophone);

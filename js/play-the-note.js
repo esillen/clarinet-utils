@@ -232,13 +232,6 @@ function init() {
     },
     defaultScale: "C_MAJOR"
   });
-  if (window.initReorderableWorkspace) {
-    window.initReorderableWorkspace({
-      workspaceSelector: "#play-note-workspace",
-      itemSelector: ".utility-panel",
-      storageKey: "panel_order_play_the_note_v1"
-    });
-  }
 
   scaleSelect.addEventListener("change", setNextTarget);
   [regChalumeau, regClarion, regAltissimo].forEach((input) => {

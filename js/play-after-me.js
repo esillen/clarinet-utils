@@ -534,13 +534,6 @@ function init() {
     defaultScale: "C_MAJOR"
   });
   updateDifficultyVisibility();
-  if (window.initReorderableWorkspace) {
-    window.initReorderableWorkspace({
-      workspaceSelector: "#play-after-workspace",
-      itemSelector: ".utility-panel",
-      storageKey: "panel_order_play_after_me_v1"
-    });
-  }
 
   difficultySelect.addEventListener("change", updateDifficultyVisibility);
   startBtn.addEventListener("click", startGame);

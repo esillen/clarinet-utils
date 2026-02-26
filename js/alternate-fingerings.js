@@ -402,13 +402,6 @@ function stopMicrophone() {
 
 function init() {
   initializeTuning();
-  if (window.initReorderableWorkspace) {
-    window.initReorderableWorkspace({
-      workspaceSelector: "#workspace",
-      itemSelector: ".controls, .results, .pitch-visualizer, .spectrum-visualizer, .fingerings",
-      storageKey: "panel_order_alternate_fingerings_v1"
-    });
-  }
 
   retryBtn.addEventListener("click", startMicrophone);
   stopBtn.addEventListener("click", stopMicrophone);

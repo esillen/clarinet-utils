@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Find Alternate Fingerings</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -51,13 +52,13 @@
         </article>
       </section>
 
-      <section class="pitch-visualizer">
+      <section class="pitch-visualizer" data-dev-only hidden>
         <h2>Live Pitch Display</h2>
         <p class="muted">Scrolling pitch trace (log scale by semitone/MIDI), left to right.</p>
         <canvas id="pitch-canvas" width="920" height="220" aria-label="Live pitch graph"></canvas>
       </section>
 
-      <section class="spectrum-visualizer">
+      <section class="spectrum-visualizer" data-dev-only hidden>
         <h2>Live Spectrum Histogram</h2>
         <p class="muted">Full FFT spectrum from 0 Hz to Nyquist.</p>
         <canvas id="spectrum-canvas" width="920" height="220" aria-label="Live spectrum histogram"></canvas>
@@ -66,11 +67,11 @@
   </main>
 
   <script src="js/music-core.js"></script>
+  <script src="js/dev-mode.js"></script>
   <script src="js/staff-render.js"></script>
   <script src="js/pitch-detector.js"></script>
   <script src="js/fingering-db.js"></script>
   <script src="js/fingering-renderer.js"></script>
-  <script src="js/reorder-panels.js"></script>
   <script src="js/alternate-fingerings.js"></script>
 </body>
 </html>
