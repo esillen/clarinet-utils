@@ -828,6 +828,10 @@ button:disabled {
   max-width: none;
 }
 
+#ptn2-score {
+  overflow-x: auto;
+}
+
 @media (min-width: 980px) {
   #workspace {
     display: grid;
@@ -988,18 +992,18 @@ button:disabled {
   }
 
   .chart-fingering-row {
-    grid-template-columns: 80px 82px minmax(0, 1fr);
+    grid-template-columns: 96px 82px minmax(0, 1fr);
     gap: 0.3rem;
     padding-top: 0.22rem;
   }
 
   .chart-clef-col,
   .chart-clef-spacer {
-    min-height: 56px;
+    min-height: 70px;
   }
 
   .chart-staff-svg {
-    width: 78px;
+    width: 94px;
     border-radius: 6px;
   }
 

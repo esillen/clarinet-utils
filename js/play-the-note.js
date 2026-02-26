@@ -147,10 +147,11 @@ function randomTarget(previous = null) {
 }
 
 function renderTarget(writtenMidi) {
+  const isMobile = window.matchMedia("(max-width: 620px)").matches;
   const svg = window.ClarinetVexRenderer.renderNoteSequenceSvg({
     notes: [{ writtenMidi, fill: NOTE_COLORS.toPlay, stemColor: NOTE_COLORS.toPlay }],
-    width: 420,
-    height: 210,
+    width: isMobile ? 440 : 420,
+    height: isMobile ? 300 : 210,
     scale: scaleRegisterControls.getScale(),
     noteColor: NOTE_COLORS.neutral
   });

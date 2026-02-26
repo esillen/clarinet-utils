@@ -203,7 +203,10 @@ function renderSequence() {
     return;
   }
 
-  const width = Math.max(520, 140 + currentSequence.length * 86);
+  const isMobile = window.matchMedia("(max-width: 620px)").matches;
+  const width = isMobile
+    ? Math.max(620, 180 + currentSequence.length * 104)
+    : Math.max(520, 140 + currentSequence.length * 86);
   const notes = currentSequence.map((writtenMidi, index) => {
     if (index < currentIndex) {
       return { writtenMidi, fill: NOTE_COLORS.correct, stemColor: NOTE_COLORS.correct };
@@ -213,13 +216,13 @@ function renderSequence() {
 
   const svg = window.ClarinetVexRenderer.renderNoteSequenceSvg({
     width,
-    height: 220,
+    height: isMobile ? 300 : 220,
     scale: scaleRegisterControls.getScale(),
     notes,
     noteColor: NOTE_COLORS.neutral
   });
   svg.classList.add("staff-svg");
-  svg.style.maxWidth = "100%";
+  svg.style.maxWidth = isMobile ? "none" : "100%";
 
   scoreEl.innerHTML = "";
   scoreEl.appendChild(svg);
