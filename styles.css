@@ -99,6 +99,20 @@ p {
   font-weight: 700;
 }
 
+.global-controls {
+  justify-content: space-between;
+}
+
+.global-controls-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.global-controls-right {
+  margin-left: auto;
+}
+
 select,
 button {
   border-radius: 10px;
@@ -883,6 +897,21 @@ button:disabled {
 
   .controls {
     align-items: stretch;
+  }
+
+  .global-controls {
+    justify-content: flex-start;
+  }
+
+  .global-controls-group {
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
+
+  .global-controls-right {
+    margin-left: 0;
   }
 
   select,

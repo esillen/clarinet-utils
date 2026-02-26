@@ -1,8 +1,12 @@
 (function () {
   const REGISTER_RANGES = {
-    chalumeau: { min: 52, max: 64 },
-    clarion: { min: 65, max: 79 },
-    altissimo: { min: 80, max: 96 }
+    // Written-note ranges in this app's 3-register model:
+    // Chalumeau: E3-F#4
+    // Clarion: G4-C6 (includes "throat tones" since we do not expose a separate throat option)
+    // Altissimo: C#6+
+    chalumeau: { min: 52, max: 66 },
+    clarion: { min: 67, max: 84 },
+    altissimo: { min: 85, max: 96 }
   };
 
   const SCALE_STORAGE_KEY = "clarinet_scale_selection_v1";

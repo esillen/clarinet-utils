@@ -15,13 +15,28 @@
         <p>Small practice tools for learning clarinet faster.</p>
       </header>
 
-      <section class="controls main-panel">
-        <label for="global-tuning">Clarinet tuning</label>
-        <select id="global-tuning">
-          <option value="Bb">B♭ Clarinet (default)</option>
-          <option value="A">A Clarinet</option>
-          <option value="C">C Clarinet</option>
-        </select>
+      <section class="controls main-panel global-controls">
+        <div class="global-controls-group">
+          <label for="global-tuning">Clarinet tuning</label>
+          <select id="global-tuning">
+            <option value="Bb">B♭ Clarinet (default)</option>
+            <option value="A">A Clarinet</option>
+            <option value="C">C Clarinet</option>
+          </select>
+        </div>
+        <div class="global-controls-group global-controls-right">
+          <label for="global-scale">Scale to practice</label>
+          <select id="global-scale">
+            <option value="C_MAJOR">C Major</option>
+            <option value="G_MAJOR">G Major</option>
+            <option value="D_MAJOR">D Major</option>
+            <option value="A_MAJOR">A Major</option>
+            <option value="F_MAJOR">F Major</option>
+            <option value="BB_MAJOR">B♭ Major</option>
+            <option value="A_MINOR">A Minor</option>
+            <option value="CHROMATIC">Chromatic</option>
+          </select>
+        </div>
       </section>
 
       <section class="card-grid main-panel">

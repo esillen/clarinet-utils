@@ -21,8 +21,10 @@ function renderMiniStaff(writtenMidi, noteLabel = "") {
       stemColor: NOTE_COLORS.neutral
     }];
   const svg = window.ClarinetVexRenderer.renderNoteSequenceSvg({
-    width: 140,
-    height: 90,
+    // Render on a larger internal canvas, then scale down in CSS.
+    // This avoids clipping of clef/ledger lines inside compact chart cards.
+    width: 260,
+    height: 170,
     scale: "CHROMATIC",
     notes: staffNotes,
     noteColor: NOTE_COLORS.neutral
