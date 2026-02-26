@@ -1,14 +1,8 @@
 const { TUNING_OFFSETS } = window.ClarinetCore;
 const { getEntry, renderFingeringCard } = window.ClarinetFingerings;
 
-const currentTuningEl = document.getElementById("current-tuning");
-const micStatus = document.getElementById("mic-status");
-const concertNoteEl = document.getElementById("concert-note");
-const concertFreqEl = document.getElementById("concert-freq");
-const writtenNoteEl = document.getElementById("written-note");
 const fingeringNoteEl = document.getElementById("fingering-note");
 const fingeringListEl = document.getElementById("fingering-list");
-const staffEl = document.getElementById("staff");
 const pitchCanvas = document.getElementById("pitch-canvas");
 const spectrumCanvas = document.getElementById("spectrum-canvas");
 
@@ -31,9 +25,6 @@ let bottomBar = null;
 
 function initializeTuning() {
   currentTuning = window.ClarinetCore.readTuning("Bb");
-  if (currentTuningEl) {
-    currentTuningEl.textContent = `Clarinet tuning: ${currentTuning}`;
-  }
 }
 
 function updateBottomBarListening(listening) {
@@ -42,18 +33,6 @@ function updateBottomBarListening(listening) {
   }
   bottomBar.setListening(listening);
   bottomBar.setStartEnabled(!listening);
-}
-
-function renderStaff(midi, noteLabel = "") {
-  const spellings = window.ClarinetStaffRenderer.getDisplayedSpellingVariants(noteLabel, midi);
-  const svg = window.ClarinetStaffRenderer.renderNoteSequenceSvg({
-    width: 360,
-    height: 190,
-    scale: "CHROMATIC",
-    notes: [{ writtenMidi: midi, spellings }]
-  });
-  staffEl.innerHTML = "";
-  staffEl.appendChild(svg);
 }
 
 function midiToY(midi, graphTop, graphBottom) {
@@ -283,7 +262,7 @@ function renderFingerings(writtenMidi) {
 
 }
 
-function renderFromMidi(concertMidi, detectedFrequency = null) {
+function renderFromMidi(concertMidi) {
   const tuning = currentTuning;
   const transpose = TUNING_OFFSETS[tuning];
   const writtenMidi = concertMidi + transpose;
@@ -292,21 +271,11 @@ function renderFromMidi(concertMidi, detectedFrequency = null) {
   const concertLabel = window.ClarinetCore.midiToName(concertMidi, true);
   const writtenLabel = window.ClarinetCore.midiToName(writtenMidi, true);
 
-  concertNoteEl.textContent = concertLabel;
-  writtenNoteEl.textContent = writtenLabel;
   if (bottomBar) {
     bottomBar.setDetectedPitches(concertLabel, writtenLabel);
   }
 
-  if (detectedFrequency) {
-    const cents = window.ClarinetCore.centsOff(detectedFrequency, concertMidi);
-    const centsPrefix = cents > 0 ? "+" : "";
-    concertFreqEl.textContent = `${detectedFrequency.toFixed(2)} Hz (${centsPrefix}${cents} cents)`;
-  }
-
   if (lastRenderedWrittenMidi !== writtenMidi) {
-    const entry = getEntry(writtenMidi);
-    renderStaff(writtenMidi, entry ? entry.noteLabel : writtenLabel);
     renderFingerings(writtenMidi);
     lastRenderedWrittenMidi = writtenMidi;
   }
@@ -335,7 +304,6 @@ function tickPitch() {
     const midi = window.ClarinetCore.freqToMidi(stable);
     renderFromMidi(midi, stable);
     pushPitchTrace(stable);
-    micStatus.textContent = "Listening... keep a stable tone for best results.";
   } else {
     noPitchFrameCount += 1;
     if (noPitchFrameCount === NO_PITCH_PLACEHOLDER_FRAMES) {
@@ -356,7 +324,6 @@ async function startMicrophone() {
     return;
   }
 
-  micStatus.textContent = "Requesting microphone access...";
   try {
     micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -373,14 +340,13 @@ async function startMicrophone() {
     analyser.smoothingTimeConstant = 0.8;
     source.connect(analyser);
 
-    micStatus.textContent = "Microphone started. Play a note.";
     updateBottomBarListening(true);
 
     pitchSmoother.clear();
     clearPitchTrace();
     tickPitch();
   } catch (error) {
-    micStatus.textContent = `Could not access microphone: ${error.message}`;
+    fingeringNoteEl.textContent = `Could not access microphone: ${error.message}`;
     updateBottomBarListening(false);
   }
 }
@@ -404,7 +370,6 @@ function stopMicrophone() {
   analyser = null;
   frequencyBins = null;
   lastRenderedWrittenMidi = null;
-  micStatus.textContent = "Microphone is off.";
   renderSpectrumHistogram();
   updateBottomBarListening(false);
   if (bottomBar) {
@@ -426,7 +391,6 @@ function init() {
     renderSpectrumHistogram(audioContext ? audioContext.sampleRate : null);
   });
 
-  concertFreqEl.textContent = "";
   renderFingeringPlaceholder();
   renderPitchTrace();
   renderSpectrumHistogram();

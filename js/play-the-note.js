@@ -5,7 +5,7 @@ const scaleSelect = document.getElementById("ptn-scale");
 const regChalumeau = document.getElementById("reg-chalumeau");
 const regClarion = document.getElementById("reg-clarion");
 const regAltissimo = document.getElementById("reg-altissimo");
-const statusEl = document.getElementById("ptn-status");
+const scoreStatusEl = document.getElementById("ptn-score-status");
 const hitsEl = document.getElementById("ptn-hits");
 const npmEl = document.getElementById("ptn-npm");
 const reactionEl = document.getElementById("ptn-reaction");
@@ -166,7 +166,9 @@ function tick() {
       );
     }
     checkMatch(concertMidi);
-    statusEl.textContent = "Listening... play the target note quickly.";
+    if (scoreStatusEl) {
+      scoreStatusEl.textContent = "Listening... play the target note quickly.";
+    }
   }
 
   rafId = requestAnimationFrame(tick);
@@ -177,7 +179,9 @@ async function startMicrophone() {
     return;
   }
 
-  statusEl.textContent = "Requesting microphone access...";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Requesting microphone access...";
+  }
 
   try {
     micStream = await navigator.mediaDevices.getUserMedia({
@@ -205,11 +209,15 @@ async function startMicrophone() {
     updateStats();
     setNextTarget();
 
-    statusEl.textContent = "Microphone started. Play the target note.";
+    if (scoreStatusEl) {
+      scoreStatusEl.textContent = "Play the target note quickly.";
+    }
     tick();
   } catch (error) {
     syncBottomBarState();
-    statusEl.textContent = `Could not access microphone: ${error.message}`;
+    if (scoreStatusEl) {
+      scoreStatusEl.textContent = `Could not access microphone: ${error.message}`;
+    }
   }
 }
 
@@ -232,7 +240,9 @@ function stopMicrophone() {
   analyser = null;
   isRunning = false;
   scaleRegisterControls.setDisabled(false);
-  statusEl.textContent = "Microphone is off.";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Press Start, then play the shown target note as fast as possible.";
+  }
   syncBottomBarState();
   if (bottomBar) {
     bottomBar.clearDetectedPitches();
@@ -268,6 +278,9 @@ function init() {
   });
 
   scoreEl.innerHTML = "<p class=\"muted\">Press Start to begin.</p>";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Press Start, then play the shown target note as fast as possible.";
+  }
   syncBottomBarState();
 }
 

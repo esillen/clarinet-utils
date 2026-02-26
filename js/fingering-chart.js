@@ -1,18 +1,8 @@
-const chartTuningEl = document.getElementById("chart-tuning");
-const noteFilterEl = document.getElementById("chart-note-filter");
-const typeFilterEl = document.getElementById("chart-type-filter");
 const searchEl = document.getElementById("chart-search");
 const summaryEl = document.getElementById("chart-summary");
 const resultsEl = document.getElementById("chart-results");
 
-let currentTuning = "Bb";
 const allEntries = window.ClarinetFingerings.getEntries();
-
-function getConcertNoteLabel(writtenMidi) {
-  const transpose = window.ClarinetCore.TUNING_OFFSETS[currentTuning] || 0;
-  const concertMidi = writtenMidi - transpose;
-  return window.ClarinetCore.midiToName(concertMidi, true);
-}
 
 function renderMiniStaff(writtenMidi, noteLabel = "") {
   const spellings = window.ClarinetStaffRenderer.getDisplayedSpellingVariants(noteLabel, writtenMidi);
@@ -26,31 +16,14 @@ function renderMiniStaff(writtenMidi, noteLabel = "") {
   return svg;
 }
 
-function populateNoteFilter() {
-  const fragment = document.createDocumentFragment();
-
-  allEntries.forEach((entry) => {
-    const option = document.createElement("option");
-    option.value = String(entry.writtenMidi);
-    option.textContent = `${entry.noteLabel} (written)`;
-    fragment.appendChild(option);
-  });
-
-  noteFilterEl.appendChild(fragment);
-}
-
-function matchesSearch(entry, fingering, query) {
+function matchesSearch(entry, query) {
   if (!query) {
     return true;
   }
 
   const haystack = [
     entry.noteLabel,
-    window.ClarinetCore.midiToName(entry.writtenMidi, true),
-    fingering.name,
-    fingering.type,
-    fingering.keys,
-    fingering.info
+    window.ClarinetCore.midiToName(entry.writtenMidi, true)
   ].join(" ").toLowerCase();
 
   return haystack.includes(query);
@@ -64,11 +37,6 @@ function renderEntry(entry, fingerings) {
   title.className = "chart-note-title";
   title.textContent = `${entry.noteLabel} (written ${window.ClarinetCore.midiToName(entry.writtenMidi, true)})`;
   group.appendChild(title);
-
-  const subtitle = document.createElement("p");
-  subtitle.className = "muted chart-note-subtitle";
-  subtitle.textContent = `Concert: ${getConcertNoteLabel(entry.writtenMidi)}`;
-  group.appendChild(subtitle);
 
   const rows = document.createElement("div");
   rows.className = "chart-note-rows";
@@ -121,8 +89,6 @@ function renderEntry(entry, fingerings) {
 }
 
 function render() {
-  const selectedNote = noteFilterEl.value;
-  const selectedType = typeFilterEl.value;
   const query = searchEl.value.trim().toLowerCase();
 
   resultsEl.innerHTML = "";
@@ -131,38 +97,19 @@ function render() {
   let fingeringCount = 0;
 
   allEntries.forEach((entry) => {
-    if (selectedNote !== "all" && entry.writtenMidi !== Number(selectedNote)) {
-      return;
-    }
-
-    const filteredFingerings = entry.fingerings.filter((fingering) => {
-      const typeMatch = selectedType === "all" || fingering.type === selectedType;
-      if (!typeMatch) {
-        return false;
-      }
-      return matchesSearch(entry, fingering, query);
-    });
-
-    if (filteredFingerings.length === 0) {
+    if (!matchesSearch(entry, query)) {
       return;
     }
 
     noteMatchCount += 1;
-    fingeringCount += filteredFingerings.length;
-    resultsEl.appendChild(renderEntry(entry, filteredFingerings));
+    fingeringCount += entry.fingerings.length;
+    resultsEl.appendChild(renderEntry(entry, entry.fingerings));
   });
 
   summaryEl.textContent = `${noteMatchCount} notes · ${fingeringCount} fingerings`;
 }
 
 function init() {
-  currentTuning = window.ClarinetCore.readTuning("Bb");
-  chartTuningEl.textContent = `Clarinet tuning: ${currentTuning}`;
-
-  populateNoteFilter();
-
-  noteFilterEl.addEventListener("change", render);
-  typeFilterEl.addEventListener("change", render);
   searchEl.addEventListener("input", render);
 
   render();

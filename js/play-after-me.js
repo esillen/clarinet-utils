@@ -33,7 +33,7 @@ const customCount = document.getElementById("custom-count");
 const customMin = document.getElementById("custom-min");
 const customMax = document.getElementById("custom-max");
 const customJump = document.getElementById("custom-jump");
-const gameStatus = document.getElementById("game-status");
+const scoreStatusEl = document.getElementById("pam-score-status");
 const roundNumberEl = document.getElementById("round-number");
 const roundSpeedEl = document.getElementById("round-speed");
 const roundResultEl = document.getElementById("round-result");
@@ -186,7 +186,10 @@ function generatePhrase() {
 }
 
 function renderPlaceholderScore() {
-  scoreOutput.innerHTML = "<p class=\"muted\">Listening for your response...</p>";
+  scoreOutput.innerHTML = "<p class=\"muted\">Press Start to begin.</p>";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Press Start. The browser plays first, then you repeat.";
+  }
 }
 
 function renderScore(expectedWritten, playedConcert = [], reveal = false, revealFirst = false) {
@@ -350,7 +353,9 @@ async function playTone(midi, durationMs) {
 async function playPrompt(concertPhrase, token) {
   currentMode = "playing";
   syncBottomBarState();
-  gameStatus.textContent = "Listen...";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Listen...";
+  }
   for (let i = 0; i < concertPhrase.length; i += 1) {
     if (!gameRunning || token !== activeRoundToken) {
       return;
@@ -368,6 +373,9 @@ function listenForPhrase(expectedLength, token) {
   currentCandidate = null;
   lastAcceptedAt = 0;
   heardNotesEl.textContent = "Listening...";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Your turn: play it back.";
+  }
 
   const startedAt = performance.now();
   const timeoutMs = Math.max(7000, expectedLength * 2800);
@@ -434,7 +442,9 @@ async function runRound(token) {
   if (phraseWritten.length === 0) {
     currentMode = "idle";
     syncBottomBarState();
-    gameStatus.textContent = "No notes available with current range/scale settings.";
+    if (scoreStatusEl) {
+      scoreStatusEl.textContent = "No notes available with current range/scale settings.";
+    }
     return;
   }
 
@@ -453,7 +463,6 @@ async function runRound(token) {
     return;
   }
 
-  gameStatus.textContent = "Your turn: play it back.";
   const attempt = await listenForPhrase(phraseConcert.length, token);
   if (!gameRunning || token !== activeRoundToken) {
     return;
@@ -466,9 +475,11 @@ async function runRound(token) {
 
   roundSpeedEl.textContent = `${speedSec}s`;
   roundResultEl.textContent = success ? "Correct" : "Try again";
-  gameStatus.textContent = success
-    ? "Nice. Next phrase coming..."
-    : "Not quite. Next phrase coming...";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = success
+      ? "Nice. Next phrase coming..."
+      : "Not quite. Next phrase coming...";
+  }
 
   const heardText = attempt.notes.length > 0
     ? attempt.notes.map((midi) => window.ClarinetCore.midiToName(midi + tuningOffset, true)).join(" ")
@@ -485,14 +496,18 @@ async function startGame() {
 
   const preflightPool = getSelectableNotePool(getDifficultyConfig());
   if (preflightPool.length === 0) {
-    gameStatus.textContent = "Select at least one register (and matching scale/custom range).";
+    if (scoreStatusEl) {
+      scoreStatusEl.textContent = "Select at least one register (and matching scale/custom range).";
+    }
     return;
   }
 
   try {
     await setupAudio();
   } catch (error) {
-    gameStatus.textContent = `Could not start microphone/audio: ${error.message}`;
+    if (scoreStatusEl) {
+      scoreStatusEl.textContent = `Could not start microphone/audio: ${error.message}`;
+    }
     syncBottomBarState();
     return;
   }
@@ -548,7 +563,9 @@ function stopGame() {
   });
   syncBottomBarState();
 
-  gameStatus.textContent = "Game stopped. Press Start to begin again.";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Game stopped. Press Start to begin again.";
+  }
 }
 
 function init() {

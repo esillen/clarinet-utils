@@ -24,7 +24,7 @@ const difficultySelect = document.getElementById("ptn2-difficulty");
 const regChalumeau = document.getElementById("ptn2-reg-chalumeau");
 const regClarion = document.getElementById("ptn2-reg-clarion");
 const regAltissimo = document.getElementById("ptn2-reg-altissimo");
-const statusEl = document.getElementById("ptn2-status");
+const scoreStatusEl = document.getElementById("ptn2-score-status");
 const roundsEl = document.getElementById("ptn2-rounds");
 const npmEl = document.getElementById("ptn2-npm");
 const reactionEl = document.getElementById("ptn2-reaction");
@@ -143,6 +143,9 @@ function updateStats() {
 function renderSequence() {
   if (currentSequence.length === 0) {
     scoreEl.innerHTML = "<p class=\"muted\">No playable notes for this scale/difficulty/register selection.</p>";
+    if (scoreStatusEl) {
+      scoreStatusEl.textContent = "No playable notes for this selection. Adjust scale/registers/difficulty.";
+    }
     noteLabelEl.textContent = "";
     return;
   }
@@ -170,6 +173,9 @@ function renderSequence() {
   scoreEl.innerHTML = "";
   scoreEl.appendChild(svg);
   noteLabelEl.textContent = `Sequence: ${currentIndex}/${currentSequence.length} notes completed`;
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Play from left to right. Green = completed, dark = current, light = upcoming.";
+  }
 }
 
 function beginNextSequence() {
@@ -179,10 +185,10 @@ function beginNextSequence() {
   sequenceShownAt = performance.now();
   inBreathingPause = false;
 
-  if (currentSequence.length === 0) {
-    statusEl.textContent = "No notes available for this scale/difficulty/register selection.";
-  } else {
-    statusEl.textContent = "Play these notes in order.";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = currentSequence.length === 0
+      ? "No notes available for this scale/difficulty/register selection."
+      : "Play these notes in order.";
   }
   syncBottomBarState();
   renderSequence();
@@ -192,7 +198,9 @@ function startBreathingPause() {
   inBreathingPause = true;
   sequenceCount += 1;
   updateStats();
-  statusEl.textContent = "Good. Breathing pause (1s)...";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Good. Breathing pause (1s)...";
+  }
   syncBottomBarState();
 
   if (pauseTimerId) {
@@ -282,7 +290,9 @@ async function startMicrophone() {
     return;
   }
 
-  statusEl.textContent = "Requesting microphone access...";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Requesting microphone access...";
+  }
   try {
     micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -317,7 +327,9 @@ async function startMicrophone() {
     tick();
   } catch (error) {
     syncBottomBarState();
-    statusEl.textContent = `Could not access microphone: ${error.message}`;
+    if (scoreStatusEl) {
+      scoreStatusEl.textContent = `Could not access microphone: ${error.message}`;
+    }
   }
 }
 
@@ -344,7 +356,9 @@ function stopMicrophone() {
   inBreathingPause = false;
   scaleRegisterControls.setDisabled(false);
   difficultySelect.disabled = false;
-  statusEl.textContent = "Microphone is off.";
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Press Start, then play the notes shown here.";
+  }
   syncBottomBarState();
   if (bottomBar) {
     bottomBar.clearDetectedPitches();
@@ -374,6 +388,9 @@ function init() {
   });
 
   renderSequence();
+  if (scoreStatusEl) {
+    scoreStatusEl.textContent = "Press Start, then play the notes shown here.";
+  }
   syncBottomBarState();
 }
 
