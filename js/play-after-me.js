@@ -33,8 +33,6 @@ const customCount = document.getElementById("custom-count");
 const customMin = document.getElementById("custom-min");
 const customMax = document.getElementById("custom-max");
 const customJump = document.getElementById("custom-jump");
-const startBtn = document.getElementById("start-game");
-const stopBtn = document.getElementById("stop-game");
 const gameStatus = document.getElementById("game-status");
 const roundNumberEl = document.getElementById("round-number");
 const roundSpeedEl = document.getElementById("round-speed");
@@ -58,6 +56,17 @@ let lastAcceptedAt = 0;
 let currentTuning = "Bb";
 let scaleRegisterControls = null;
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
+let bottomBar = null;
+
+function syncBottomBarState() {
+  if (!bottomBar) {
+    return;
+  }
+  const isListeningMode = gameRunning && currentMode === "listening";
+  bottomBar.setListening(isListeningMode);
+  bottomBar.setStartEnabled(!gameRunning);
+  bottomBar.setStopEnabled(gameRunning);
+}
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -242,12 +251,21 @@ function analysisLoop() {
 
   const buffer = new Float32Array(analyser.fftSize);
   analyser.getFloatTimeDomainData(buffer);
+  if (bottomBar) {
+    bottomBar.updateFromTimeDomain(buffer);
+  }
 
   if (currentMode === "listening") {
     const pitch = window.PitchFinder.autoCorrelate(buffer, audioContext.sampleRate);
     if (pitch > 60 && pitch < 2100) {
       const stable = pitchSmoother.push(pitch);
       const midi = window.ClarinetCore.freqToMidi(stable);
+      if (bottomBar) {
+        bottomBar.setDetectedPitches(
+          window.ClarinetCore.midiToName(midi, true),
+          window.ClarinetCore.midiToName(midi + TUNING_OFFSETS[currentTuning], true)
+        );
+      }
       maybeAcceptDetectedNote(midi);
     }
   }
@@ -298,6 +316,10 @@ function stopAudio() {
   }
 
   analyser = null;
+  syncBottomBarState();
+  if (bottomBar) {
+    bottomBar.clearDetectedPitches();
+  }
 }
 
 async function playTone(midi, durationMs) {
@@ -327,6 +349,7 @@ async function playTone(midi, durationMs) {
 
 async function playPrompt(concertPhrase, token) {
   currentMode = "playing";
+  syncBottomBarState();
   gameStatus.textContent = "Listen...";
   for (let i = 0; i < concertPhrase.length; i += 1) {
     if (!gameRunning || token !== activeRoundToken) {
@@ -339,6 +362,7 @@ async function playPrompt(concertPhrase, token) {
 
 function listenForPhrase(expectedLength, token) {
   currentMode = "listening";
+  syncBottomBarState();
   pitchSmoother.clear();
   detectedSequence = [];
   currentCandidate = null;
@@ -408,6 +432,8 @@ function sequencesMatch(expected, heard) {
 async function runRound(token) {
   const phraseWritten = generatePhrase();
   if (phraseWritten.length === 0) {
+    currentMode = "idle";
+    syncBottomBarState();
     gameStatus.textContent = "No notes available with current range/scale settings.";
     return;
   }
@@ -435,6 +461,8 @@ async function runRound(token) {
 
   const success = attempt.completed && sequencesMatch(phraseConcert, attempt.notes);
   const speedSec = (attempt.elapsedMs / 1000).toFixed(2);
+  currentMode = "playing";
+  syncBottomBarState();
 
   roundSpeedEl.textContent = `${speedSec}s`;
   roundResultEl.textContent = success ? "Correct" : "Try again";
@@ -465,6 +493,7 @@ async function startGame() {
     await setupAudio();
   } catch (error) {
     gameStatus.textContent = `Could not start microphone/audio: ${error.message}`;
+    syncBottomBarState();
     return;
   }
 
@@ -472,14 +501,13 @@ async function startGame() {
   activeRoundToken += 1;
   const token = activeRoundToken;
 
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
   scaleRegisterControls.setDisabled(true);
   difficultySelect.disabled = true;
   revealFirstNote.disabled = true;
   customControls.querySelectorAll("input").forEach((input) => {
     input.disabled = true;
   });
+  syncBottomBarState();
 
   if (!loopRaf) {
     analysisLoop();
@@ -496,12 +524,15 @@ async function startGame() {
 
 function stopGame() {
   if (!gameRunning) {
+    currentMode = "idle";
+    syncBottomBarState();
     return;
   }
 
   gameRunning = false;
   activeRoundToken += 1;
   currentMode = "idle";
+  syncBottomBarState();
   if (cancelRoundInput) {
     cancelRoundInput();
   } else {
@@ -509,17 +540,15 @@ function stopGame() {
   }
 
   stopAudio();
-
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
   scaleRegisterControls.setDisabled(false);
   difficultySelect.disabled = false;
   revealFirstNote.disabled = false;
   customControls.querySelectorAll("input").forEach((input) => {
     input.disabled = false;
   });
+  syncBottomBarState();
 
-  gameStatus.textContent = "Game stopped. Press Start game to begin again.";
+  gameStatus.textContent = "Game stopped. Press Start to begin again.";
 }
 
 function init() {
@@ -534,12 +563,20 @@ function init() {
     defaultScale: "C_MAJOR"
   });
   updateDifficultyVisibility();
+  bottomBar = window.BottomBar.init({
+    startLabel: "Start",
+    stopLabel: "Stop",
+    onStart: startGame,
+    onStop: stopGame,
+    startEnabled: true,
+    stopEnabled: false,
+    listening: false
+  });
 
   difficultySelect.addEventListener("change", updateDifficultyVisibility);
-  startBtn.addEventListener("click", startGame);
-  stopBtn.addEventListener("click", stopGame);
 
   renderPlaceholderScore();
+  syncBottomBarState();
 }
 
 init();

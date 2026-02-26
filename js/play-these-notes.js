@@ -24,8 +24,6 @@ const difficultySelect = document.getElementById("ptn2-difficulty");
 const regChalumeau = document.getElementById("ptn2-reg-chalumeau");
 const regClarion = document.getElementById("ptn2-reg-clarion");
 const regAltissimo = document.getElementById("ptn2-reg-altissimo");
-const startBtn = document.getElementById("ptn2-retry");
-const stopBtn = document.getElementById("ptn2-stop");
 const statusEl = document.getElementById("ptn2-status");
 const roundsEl = document.getElementById("ptn2-rounds");
 const npmEl = document.getElementById("ptn2-npm");
@@ -51,6 +49,17 @@ let totalAcceptedNotes = 0;
 let runStartedAt = 0;
 let scaleRegisterControls = null;
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
+let bottomBar = null;
+
+function syncBottomBarState() {
+  if (!bottomBar) {
+    return;
+  }
+  const activelyListening = isRunning && !inBreathingPause && currentSequence.length > 0 && currentIndex < currentSequence.length;
+  bottomBar.setListening(activelyListening);
+  bottomBar.setStartEnabled(!isRunning);
+  bottomBar.setStopEnabled(isRunning);
+}
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -175,6 +184,7 @@ function beginNextSequence() {
   } else {
     statusEl.textContent = "Play these notes in order.";
   }
+  syncBottomBarState();
   renderSequence();
 }
 
@@ -183,6 +193,7 @@ function startBreathingPause() {
   sequenceCount += 1;
   updateStats();
   statusEl.textContent = "Good. Breathing pause (1s)...";
+  syncBottomBarState();
 
   if (pauseTimerId) {
     clearTimeout(pauseTimerId);
@@ -246,11 +257,20 @@ function tick() {
 
   const buffer = new Float32Array(analyser.fftSize);
   analyser.getFloatTimeDomainData(buffer);
+  if (bottomBar) {
+    bottomBar.updateFromTimeDomain(buffer);
+  }
   const pitch = window.PitchFinder.autoCorrelate(buffer, audioContext.sampleRate);
 
   if (pitch > 60 && pitch < 2100) {
     const stable = pitchSmoother.push(pitch);
     const concertMidi = window.ClarinetCore.freqToMidi(stable);
+    if (bottomBar) {
+      bottomBar.setDetectedPitches(
+        window.ClarinetCore.midiToName(concertMidi, true),
+        window.ClarinetCore.midiToName(concertMidi + TUNING_OFFSETS[currentTuning], true)
+      );
+    }
     checkMatch(concertMidi);
   }
 
@@ -279,8 +299,6 @@ async function startMicrophone() {
     analyser.smoothingTimeConstant = 0.8;
     source.connect(analyser);
 
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
     scaleRegisterControls.setDisabled(true);
     difficultySelect.disabled = true;
     isRunning = true;
@@ -292,12 +310,13 @@ async function startMicrophone() {
     totalAcceptedNotes = 0;
     reactionEl.textContent = "-";
     pitchSmoother.clear();
+    syncBottomBarState();
 
     updateStats();
     beginNextSequence();
     tick();
   } catch (error) {
-    startBtn.disabled = false;
+    syncBottomBarState();
     statusEl.textContent = `Could not access microphone: ${error.message}`;
   }
 }
@@ -323,11 +342,13 @@ function stopMicrophone() {
   analyser = null;
   isRunning = false;
   inBreathingPause = false;
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
   scaleRegisterControls.setDisabled(false);
   difficultySelect.disabled = false;
   statusEl.textContent = "Microphone is off.";
+  syncBottomBarState();
+  if (bottomBar) {
+    bottomBar.clearDetectedPitches();
+  }
 }
 
 function init() {
@@ -342,10 +363,18 @@ function init() {
     defaultScale: "C_MAJOR"
   });
 
-  startBtn.addEventListener("click", startMicrophone);
-  stopBtn.addEventListener("click", stopMicrophone);
+  bottomBar = window.BottomBar.init({
+    startLabel: "Start",
+    stopLabel: "Stop",
+    onStart: startMicrophone,
+    onStop: stopMicrophone,
+    startEnabled: true,
+    stopEnabled: false,
+    listening: false
+  });
 
   renderSequence();
+  syncBottomBarState();
 }
 
 init();

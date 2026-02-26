@@ -5,8 +5,6 @@ const scaleSelect = document.getElementById("ptn-scale");
 const regChalumeau = document.getElementById("reg-chalumeau");
 const regClarion = document.getElementById("reg-clarion");
 const regAltissimo = document.getElementById("reg-altissimo");
-const startBtn = document.getElementById("ptn-retry");
-const stopBtn = document.getElementById("ptn-stop");
 const statusEl = document.getElementById("ptn-status");
 const hitsEl = document.getElementById("ptn-hits");
 const npmEl = document.getElementById("ptn-npm");
@@ -28,6 +26,16 @@ let isRunning = false;
 let currentTuning = "Bb";
 let scaleRegisterControls = null;
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
+let bottomBar = null;
+
+function syncBottomBarState() {
+  if (!bottomBar) {
+    return;
+  }
+  bottomBar.setListening(isRunning);
+  bottomBar.setStartEnabled(!isRunning);
+  bottomBar.setStopEnabled(isRunning);
+}
 
 function initializeTuning() {
   currentTuning = window.ClarinetCore.readTuning("Bb");
@@ -143,11 +151,20 @@ function tick() {
 
   const buffer = new Float32Array(analyser.fftSize);
   analyser.getFloatTimeDomainData(buffer);
+  if (bottomBar) {
+    bottomBar.updateFromTimeDomain(buffer);
+  }
   const pitch = window.PitchFinder.autoCorrelate(buffer, audioContext.sampleRate);
 
   if (pitch > 60 && pitch < 2100) {
     const stable = pitchSmoother.push(pitch);
     const concertMidi = window.ClarinetCore.freqToMidi(stable);
+    if (bottomBar) {
+      bottomBar.setDetectedPitches(
+        window.ClarinetCore.midiToName(concertMidi, true),
+        window.ClarinetCore.midiToName(concertMidi + TUNING_OFFSETS[currentTuning], true)
+      );
+    }
     checkMatch(concertMidi);
     statusEl.textContent = "Listening... play the target note quickly.";
   }
@@ -178,10 +195,9 @@ async function startMicrophone() {
     analyser.smoothingTimeConstant = 0.8;
     source.connect(analyser);
 
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
     scaleRegisterControls.setDisabled(true);
     isRunning = true;
+    syncBottomBarState();
     runStartedAt = performance.now();
     hitCount = 0;
     pitchSmoother.clear();
@@ -192,7 +208,7 @@ async function startMicrophone() {
     statusEl.textContent = "Microphone started. Play the target note.";
     tick();
   } catch (error) {
-    startBtn.disabled = false;
+    syncBottomBarState();
     statusEl.textContent = `Could not access microphone: ${error.message}`;
   }
 }
@@ -215,10 +231,12 @@ function stopMicrophone() {
 
   analyser = null;
   isRunning = false;
-  stopBtn.disabled = true;
-  startBtn.disabled = false;
   scaleRegisterControls.setDisabled(false);
   statusEl.textContent = "Microphone is off.";
+  syncBottomBarState();
+  if (bottomBar) {
+    bottomBar.clearDetectedPitches();
+  }
 }
 
 function init() {
@@ -239,10 +257,18 @@ function init() {
       setNextTarget();
     });
   });
-  startBtn.addEventListener("click", startMicrophone);
-  stopBtn.addEventListener("click", stopMicrophone);
+  bottomBar = window.BottomBar.init({
+    startLabel: "Start",
+    stopLabel: "Stop",
+    onStart: startMicrophone,
+    onStop: stopMicrophone,
+    startEnabled: true,
+    stopEnabled: false,
+    listening: false
+  });
 
   scoreEl.innerHTML = "<p class=\"muted\">Press Start to begin.</p>";
+  syncBottomBarState();
 }
 
 init();

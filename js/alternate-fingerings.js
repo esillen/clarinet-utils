@@ -2,8 +2,6 @@ const { TUNING_OFFSETS } = window.ClarinetCore;
 const { getEntry, renderFingeringCard } = window.ClarinetFingerings;
 
 const currentTuningEl = document.getElementById("current-tuning");
-const retryBtn = document.getElementById("retry-btn");
-const stopBtn = document.getElementById("stop-btn");
 const micStatus = document.getElementById("mic-status");
 const concertNoteEl = document.getElementById("concert-note");
 const concertFreqEl = document.getElementById("concert-freq");
@@ -29,12 +27,21 @@ let currentTuning = "Bb";
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 let noPitchFrameCount = 0;
 const NO_PITCH_PLACEHOLDER_FRAMES = 16;
+let bottomBar = null;
 
 function initializeTuning() {
   currentTuning = window.ClarinetCore.readTuning("Bb");
   if (currentTuningEl) {
     currentTuningEl.textContent = `Clarinet tuning: ${currentTuning}`;
   }
+}
+
+function updateBottomBarListening(listening) {
+  if (!bottomBar) {
+    return;
+  }
+  bottomBar.setListening(listening);
+  bottomBar.setStartEnabled(!listening);
 }
 
 function renderStaff(midi, noteLabel = "") {
@@ -287,6 +294,9 @@ function renderFromMidi(concertMidi, detectedFrequency = null) {
 
   concertNoteEl.textContent = concertLabel;
   writtenNoteEl.textContent = writtenLabel;
+  if (bottomBar) {
+    bottomBar.setDetectedPitches(concertLabel, writtenLabel);
+  }
 
   if (detectedFrequency) {
     const cents = window.ClarinetCore.centsOff(detectedFrequency, concertMidi);
@@ -309,6 +319,9 @@ function tickPitch() {
 
   const buffer = new Float32Array(analyser.fftSize);
   analyser.getFloatTimeDomainData(buffer);
+  if (bottomBar) {
+    bottomBar.updateFromTimeDomain(buffer);
+  }
   if (!frequencyBins || frequencyBins.length !== analyser.frequencyBinCount) {
     frequencyBins = new Uint8Array(analyser.frequencyBinCount);
   }
@@ -360,17 +373,15 @@ async function startMicrophone() {
     analyser.smoothingTimeConstant = 0.8;
     source.connect(analyser);
 
-    retryBtn.hidden = true;
-    stopBtn.disabled = false;
     micStatus.textContent = "Microphone started. Play a note.";
+    updateBottomBarListening(true);
 
     pitchSmoother.clear();
     clearPitchTrace();
     tickPitch();
   } catch (error) {
-    retryBtn.hidden = false;
-    retryBtn.disabled = false;
     micStatus.textContent = `Could not access microphone: ${error.message}`;
+    updateBottomBarListening(false);
   }
 }
 
@@ -393,18 +404,23 @@ function stopMicrophone() {
   analyser = null;
   frequencyBins = null;
   lastRenderedWrittenMidi = null;
-  retryBtn.hidden = false;
-  retryBtn.disabled = false;
-  stopBtn.disabled = true;
   micStatus.textContent = "Microphone is off.";
   renderSpectrumHistogram();
+  updateBottomBarListening(false);
+  if (bottomBar) {
+    bottomBar.clearDetectedPitches();
+  }
 }
 
 function init() {
   initializeTuning();
-
-  retryBtn.addEventListener("click", startMicrophone);
-  stopBtn.addEventListener("click", stopMicrophone);
+  bottomBar = window.BottomBar.init({
+    startLabel: "Start listening",
+    showStop: false,
+    onStart: startMicrophone,
+    startEnabled: true,
+    listening: false
+  });
   window.addEventListener("resize", () => {
     renderPitchTrace();
     renderSpectrumHistogram(audioContext ? audioContext.sampleRate : null);
@@ -414,7 +430,7 @@ function init() {
   renderFingeringPlaceholder();
   renderPitchTrace();
   renderSpectrumHistogram();
-  startMicrophone();
+  updateBottomBarListening(false);
 }
 
 init();

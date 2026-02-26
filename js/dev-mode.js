@@ -45,7 +45,9 @@
   function init() {
     const enabled = readDevMode();
     applyDevMode(enabled);
-    document.body.appendChild(createToggle(enabled));
+    if (document.body && document.body.hasAttribute("data-show-dev-toggle")) {
+      document.body.appendChild(createToggle(enabled));
+    }
   }
 
   if (document.readyState === "loading") {
