@@ -388,20 +388,55 @@ async function playTone(midi, durationMs) {
 
   const now = audioContext.currentTime;
   const durationSec = durationMs / 1000;
-  const oscillator = audioContext.createOscillator();
-  const gain = audioContext.createGain();
+  const fundamental = window.ClarinetCore.midiToFreq(midi);
+  const output = audioContext.createGain();
+  const bodyFilter = audioContext.createBiquadFilter();
+  const edgeFilter = audioContext.createBiquadFilter();
 
-  oscillator.type = "triangle";
-  oscillator.frequency.value = window.ClarinetCore.midiToFreq(midi);
+  // Clarinet-like color: strong odd harmonics plus resonant body shaping.
+  const partials = [
+    { ratio: 1, amp: 0.58, type: "square" },
+    { ratio: 3, amp: 0.26, type: "square" },
+    { ratio: 5, amp: 0.11, type: "triangle" },
+    { ratio: 7, amp: 0.06, type: "triangle" }
+  ];
 
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
+  bodyFilter.type = "bandpass";
+  bodyFilter.frequency.setValueAtTime(Math.min(2300, fundamental * 2.4), now);
+  bodyFilter.Q.setValueAtTime(0.9, now);
 
-  oscillator.connect(gain);
-  gain.connect(audioContext.destination);
-  oscillator.start(now);
-  oscillator.stop(now + durationSec + 0.01);
+  edgeFilter.type = "lowpass";
+  edgeFilter.frequency.setValueAtTime(Math.min(5200, fundamental * 6.5), now);
+  edgeFilter.Q.setValueAtTime(0.3, now);
+
+  output.gain.setValueAtTime(0.0001, now);
+  output.gain.exponentialRampToValueAtTime(0.22, now + 0.018);
+  output.gain.exponentialRampToValueAtTime(0.15, now + 0.09);
+  output.gain.setValueAtTime(0.15, Math.max(now + 0.09, now + durationSec - 0.07));
+  output.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
+
+  const oscillators = [];
+  partials.forEach((partial) => {
+    const osc = audioContext.createOscillator();
+    const partialGain = audioContext.createGain();
+    osc.type = partial.type;
+    osc.frequency.setValueAtTime(fundamental * partial.ratio, now);
+    // Small detune prevents static/organ-like tone.
+    osc.detune.setValueAtTime((Math.random() - 0.5) * 5, now);
+    partialGain.gain.setValueAtTime(partial.amp, now);
+    osc.connect(partialGain);
+    partialGain.connect(bodyFilter);
+    oscillators.push(osc);
+  });
+
+  bodyFilter.connect(edgeFilter);
+  edgeFilter.connect(output);
+  output.connect(audioContext.destination);
+
+  oscillators.forEach((osc) => {
+    osc.start(now);
+    osc.stop(now + durationSec + 0.02);
+  });
 
   await sleep(durationMs + 80);
 }
