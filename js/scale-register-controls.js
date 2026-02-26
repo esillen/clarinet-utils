@@ -7,6 +7,7 @@
 
   const SCALE_STORAGE_KEY = "clarinet_scale_selection_v1";
   const REGISTER_STORAGE_KEY = "clarinet_register_selection_v1";
+  const ACCIDENTALS_STORAGE_KEY = "clarinet_add_accidentals_v1";
 
   function readScale(defaultScale = "C_MAJOR") {
     const saved = localStorage.getItem(SCALE_STORAGE_KEY);
@@ -40,6 +41,14 @@
     localStorage.setItem(REGISTER_STORAGE_KEY, JSON.stringify(valid));
   }
 
+  function readAddAccidentals(defaultValue = false) {
+    return localStorage.getItem(ACCIDENTALS_STORAGE_KEY) === "1" ? true : defaultValue;
+  }
+
+  function writeAddAccidentals(enabled) {
+    localStorage.setItem(ACCIDENTALS_STORAGE_KEY, enabled ? "1" : "0");
+  }
+
   function collectRegisterPool(selectedRegisters) {
     const pool = [];
     selectedRegisters.forEach((name) => {
@@ -64,8 +73,10 @@
     const {
       scaleSelect,
       registerCheckboxes,
+      addAccidentalsCheckbox = null,
       defaultScale = "C_MAJOR",
-      defaultRegisters = ["chalumeau", "clarion", "altissimo"]
+      defaultRegisters = ["chalumeau", "clarion", "altissimo"],
+      defaultAddAccidentals = false
     } = options || {};
 
     if (!scaleSelect || !registerCheckboxes) {
@@ -90,10 +101,17 @@
       }
     });
 
+    if (addAccidentalsCheckbox) {
+      addAccidentalsCheckbox.checked = readAddAccidentals(defaultAddAccidentals);
+    }
+
     const persist = () => {
       writeScale(scaleSelect.value);
       const selected = Object.keys(regMap).filter((name) => regMap[name] && regMap[name].checked);
       writeRegisters(selected);
+      if (addAccidentalsCheckbox) {
+        writeAddAccidentals(Boolean(addAccidentalsCheckbox.checked));
+      }
     };
 
     scaleSelect.addEventListener("change", persist);
@@ -102,6 +120,9 @@
         checkbox.addEventListener("change", persist);
       }
     });
+    if (addAccidentalsCheckbox) {
+      addAccidentalsCheckbox.addEventListener("change", persist);
+    }
 
     function getScale() {
       return scaleSelect.value;
@@ -131,6 +152,9 @@
           checkbox.disabled = disabled;
         }
       });
+      if (addAccidentalsCheckbox) {
+        addAccidentalsCheckbox.disabled = disabled;
+      }
     }
 
     function onChange(handler) {
@@ -140,6 +164,13 @@
           checkbox.addEventListener("change", handler);
         }
       });
+      if (addAccidentalsCheckbox) {
+        addAccidentalsCheckbox.addEventListener("change", handler);
+      }
+    }
+
+    function isAddAccidentalsEnabled() {
+      return addAccidentalsCheckbox ? Boolean(addAccidentalsCheckbox.checked) : false;
     }
 
     return {
@@ -149,6 +180,7 @@
       getRegisterPool,
       filterToScale,
       getScaleFilteredRegisterPool,
+      isAddAccidentalsEnabled,
       setDisabled,
       onChange
     };

@@ -1,16 +1,31 @@
 const searchEl = document.getElementById("chart-search");
 const summaryEl = document.getElementById("chart-summary");
 const resultsEl = document.getElementById("chart-results");
+const NOTE_COLORS = window.ClarinetVexRenderer.NOTE_COLORS;
 
 const allEntries = window.ClarinetFingerings.getEntries();
 
 function renderMiniStaff(writtenMidi, noteLabel = "") {
-  const spellings = window.ClarinetStaffRenderer.getDisplayedSpellingVariants(noteLabel, writtenMidi);
-  const svg = window.ClarinetStaffRenderer.renderNoteSequenceSvg({
+  const spellings = window.ClarinetVexRenderer.getDisplayedSpellingVariants(noteLabel, writtenMidi);
+  const staffNotes = spellings.length > 1
+    ? spellings.map((spelling) => ({
+      writtenMidi,
+      spelling,
+      fill: NOTE_COLORS.neutral,
+      stemColor: NOTE_COLORS.neutral
+    }))
+    : [{
+      writtenMidi,
+      spelling: spellings[0],
+      fill: NOTE_COLORS.neutral,
+      stemColor: NOTE_COLORS.neutral
+    }];
+  const svg = window.ClarinetVexRenderer.renderNoteSequenceSvg({
     width: 140,
     height: 90,
     scale: "CHROMATIC",
-    notes: [{ writtenMidi, spellings, fill: "#10634f", stemColor: "#10634f" }]
+    notes: staffNotes,
+    noteColor: NOTE_COLORS.neutral
   });
   svg.classList.add("chart-staff-svg");
   return svg;

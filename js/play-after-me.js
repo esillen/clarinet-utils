@@ -1,4 +1,5 @@
 const { TUNING_OFFSETS } = window.ClarinetCore;
+const NOTE_COLORS = window.ClarinetVexRenderer.NOTE_COLORS;
 
 const DIFFICULTY_PRESETS = {
   easy: {
@@ -27,6 +28,7 @@ const difficultySelect = document.getElementById("difficulty-select");
 const regChalumeau = document.getElementById("pam-reg-chalumeau");
 const regClarion = document.getElementById("pam-reg-clarion");
 const regAltissimo = document.getElementById("pam-reg-altissimo");
+const addAccidentalsEl = document.getElementById("pam-add-accidentals");
 const revealFirstNote = document.getElementById("reveal-first-note");
 const customControls = document.getElementById("custom-controls");
 const customCount = document.getElementById("custom-count");
@@ -107,10 +109,10 @@ function getDifficultyConfig() {
   };
 }
 
-function getSelectableNotePool(config) {
+function getSelectableNotePools(config) {
   const registerPool = scaleRegisterControls.getRegisterPool();
   if (registerPool.length === 0) {
-    return [];
+    return { candidatePool: [], scalePool: [], accidentalPool: [] };
   }
 
   let candidatePool = registerPool;
@@ -119,67 +121,118 @@ function getSelectableNotePool(config) {
   }
 
   if (candidatePool.length === 0) {
-    return [];
+    return { candidatePool: [], scalePool: [], accidentalPool: [] };
   }
 
-  const scaleFiltered = scaleRegisterControls.filterToScale(candidatePool);
-
-  return scaleFiltered.length > 0 ? scaleFiltered : candidatePool;
+  const scalePool = scaleRegisterControls.filterToScale(candidatePool);
+  const accidentalPool = candidatePool.filter((midi) => !scalePool.includes(midi));
+  return {
+    candidatePool,
+    scalePool,
+    accidentalPool
+  };
 }
 
-function pickNextIndex(currentIndex, poolLength, config) {
-  const candidates = [];
-  for (let index = 0; index < poolLength; index += 1) {
-    const distance = Math.abs(index - currentIndex);
-    if (distance > 0 && distance <= config.maxJump) {
-      candidates.push(index);
-    }
+function getAccidentalRangeForDifficulty(config) {
+  if (difficultySelect.value === "easy") {
+    return { min: 0, max: 1 };
   }
-
-  if (candidates.length === 0) {
-    return randomInt(0, poolLength - 1);
+  if (difficultySelect.value === "medium") {
+    return { min: 0, max: 2 };
   }
-
-  const near = candidates.filter((idx) => Math.abs(idx - currentIndex) <= 2);
-  const far = candidates.filter((idx) => Math.abs(idx - currentIndex) >= 4);
-
-  if (config.jumpBias === "small" && near.length > 0) {
-    return near[randomInt(0, near.length - 1)];
+  if (difficultySelect.value === "hard") {
+    return { min: 1, max: 3 };
   }
-
-  if (config.jumpBias === "large" && far.length > 0) {
-    return far[randomInt(0, far.length - 1)];
+  if (config.maxJump <= 3) {
+    return { min: 0, max: 1 };
   }
-
-  if (config.jumpBias === "mixed") {
-    const useFar = Math.random() < 0.35;
-    if (useFar && far.length > 0) {
-      return far[randomInt(0, far.length - 1)];
-    }
-    if (!useFar && near.length > 0) {
-      return near[randomInt(0, near.length - 1)];
-    }
+  if (config.maxJump <= 6) {
+    return { min: 0, max: 2 };
   }
+  return { min: 1, max: 3 };
+}
 
-  return candidates[randomInt(0, candidates.length - 1)];
+function planAccidentalTargets(phraseLength, config) {
+  const targets = new Set();
+  if (!scaleRegisterControls.isAddAccidentalsEnabled() || phraseLength <= 0) {
+    return targets;
+  }
+  const range = getAccidentalRangeForDifficulty(config);
+  const scaledMin = Math.max(0, Math.floor((range.min * phraseLength) / 8));
+  const scaledMax = Math.max(scaledMin, Math.ceil((range.max * phraseLength) / 8));
+  let targetCount = randomInt(scaledMin, scaledMax);
+  if (range.min > 0 && phraseLength > 0 && targetCount === 0) {
+    targetCount = 1;
+  }
+  while (targets.size < Math.min(phraseLength, targetCount)) {
+    targets.add(randomInt(0, phraseLength - 1));
+  }
+  return targets;
 }
 
 function generatePhrase() {
   const config = getDifficultyConfig();
-  const pool = getSelectableNotePool(config);
+  const pools = getSelectableNotePools(config);
+  const pool = pools.candidatePool;
   const phraseLength = randomInt(config.minNotes, config.maxNotes);
+  const scaleSet = new Set(pools.scalePool);
+  const accidentalTargets = planAccidentalTargets(phraseLength, config);
 
   if (pool.length === 0) {
     return [];
   }
 
+  const chooseStartAccidental = pools.accidentalPool.length > 0 && accidentalTargets.has(0);
+  let startPool = chooseStartAccidental ? pools.accidentalPool : pools.scalePool;
+  if (startPool.length === 0) {
+    startPool = pools.scalePool.length > 0 ? pools.scalePool : pools.accidentalPool;
+  }
+  if (startPool.length === 0) {
+    return [];
+  }
+
   const phrase = [];
-  let currentIndex = randomInt(0, pool.length - 1);
-  phrase.push(pool[currentIndex]);
+  let currentMidi = startPool[randomInt(0, startPool.length - 1)];
+  phrase.push(currentMidi);
 
   while (phrase.length < phraseLength) {
-    currentIndex = pickNextIndex(currentIndex, pool.length, config);
-    phrase.push(pool[currentIndex]);
+    const currentIndex = pool.indexOf(currentMidi);
+    const allCandidates = [];
+    for (let index = 0; index < pool.length; index += 1) {
+      const distance = Math.abs(index - currentIndex);
+      if (distance > 0 && distance <= config.maxJump) {
+        allCandidates.push(index);
+      }
+    }
+    if (allCandidates.length === 0) {
+      currentMidi = pool[randomInt(0, pool.length - 1)];
+      phrase.push(currentMidi);
+      continue;
+    }
+    const wantAccidental = pools.accidentalPool.length > 0 && accidentalTargets.has(phrase.length);
+    const preferred = allCandidates.filter((idx) => {
+      const midi = pool[idx];
+      const isAccidental = !scaleSet.has(midi);
+      return wantAccidental ? isAccidental : !isAccidental;
+    });
+    const chosenPool = preferred.length > 0 ? preferred : allCandidates;
+    const near = chosenPool.filter((idx) => Math.abs(idx - currentIndex) <= 2);
+    const far = chosenPool.filter((idx) => Math.abs(idx - currentIndex) >= 4);
+    let chosenIndex = chosenPool[randomInt(0, chosenPool.length - 1)];
+    if (config.jumpBias === "small" && near.length > 0) {
+      chosenIndex = near[randomInt(0, near.length - 1)];
+    } else if (config.jumpBias === "large" && far.length > 0) {
+      chosenIndex = far[randomInt(0, far.length - 1)];
+    } else if (config.jumpBias === "mixed") {
+      const useFar = Math.random() < 0.35;
+      if (useFar && far.length > 0) {
+        chosenIndex = far[randomInt(0, far.length - 1)];
+      } else if (!useFar && near.length > 0) {
+        chosenIndex = near[randomInt(0, near.length - 1)];
+      }
+    }
+    currentMidi = pool[chosenIndex];
+    phrase.push(currentMidi);
   }
 
   return phrase;
@@ -199,7 +252,9 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false, reveal
     const playedWritten = playedConcert[index] !== undefined ? playedConcert[index] + tuningOffset : null;
     const correct = playedWritten !== null && Math.abs(playedWritten - midi) <= 0;
     const showPreReveal = !reveal && revealFirst && index === 0;
-    const fillColor = reveal ? (correct ? "#0f7c62" : "#c23f4d") : "#10634f";
+    const fillColor = reveal
+      ? (correct ? NOTE_COLORS.correct : NOTE_COLORS.incorrect)
+      : NOTE_COLORS.toPlay;
     return {
       writtenMidi: midi,
       visible: reveal || showPreReveal,
@@ -208,11 +263,12 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false, reveal
     };
   });
 
-  const svg = window.ClarinetStaffRenderer.renderNoteSequenceSvg({
+  const svg = window.ClarinetVexRenderer.renderNoteSequenceSvg({
     notes,
     width,
     height: 210,
-    scale: scaleRegisterControls.getScale()
+    scale: scaleRegisterControls.getScale(),
+    noteColor: NOTE_COLORS.neutral
   });
   svg.setAttribute("class", "staff-svg");
   svg.style.maxWidth = "100%";
@@ -494,8 +550,12 @@ async function startGame() {
     return;
   }
 
-  const preflightPool = getSelectableNotePool(getDifficultyConfig());
-  if (preflightPool.length === 0) {
+  const preflightPools = getSelectableNotePools(getDifficultyConfig());
+  const accidentalsOn = scaleRegisterControls.isAddAccidentalsEnabled();
+  const hasPlayable = accidentalsOn
+    ? (preflightPools.scalePool.length > 0 || preflightPools.accidentalPool.length > 0)
+    : preflightPools.scalePool.length > 0;
+  if (preflightPools.candidatePool.length === 0 || !hasPlayable) {
     if (scoreStatusEl) {
       scoreStatusEl.textContent = "Select at least one register (and matching scale/custom range).";
     }
@@ -577,6 +637,7 @@ function init() {
       clarion: regClarion,
       altissimo: regAltissimo
     },
+    addAccidentalsCheckbox: addAccidentalsEl,
     defaultScale: "C_MAJOR"
   });
   updateDifficultyVisibility();

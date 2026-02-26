@@ -1,10 +1,12 @@
 const { TUNING_OFFSETS } = window.ClarinetCore;
+const NOTE_COLORS = window.ClarinetVexRenderer.NOTE_COLORS;
 
 const currentTuningEl = document.getElementById("ptn-current-tuning");
 const scaleSelect = document.getElementById("ptn-scale");
 const regChalumeau = document.getElementById("reg-chalumeau");
 const regClarion = document.getElementById("reg-clarion");
 const regAltissimo = document.getElementById("reg-altissimo");
+const addAccidentalsEl = document.getElementById("ptn-add-accidentals");
 const scoreStatusEl = document.getElementById("ptn-score-status");
 const hitsEl = document.getElementById("ptn-hits");
 const npmEl = document.getElementById("ptn-npm");
@@ -27,6 +29,8 @@ let currentTuning = "Bb";
 let scaleRegisterControls = null;
 const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 let bottomBar = null;
+let accidentalWindowSlotsLeft = 0;
+let accidentalNeededInWindow = 0;
 
 function syncBottomBarState() {
   if (!bottomBar) {
@@ -44,33 +48,111 @@ function initializeTuning() {
   }
 }
 
-function getAllowedWrittenNotes() {
-  return scaleRegisterControls.getScaleFilteredRegisterPool();
+function getAllowedPools() {
+  const registerPool = scaleRegisterControls.getRegisterPool();
+  const scalePool = scaleRegisterControls.filterToScale(registerPool);
+  const accidentalPool = registerPool.filter((midi) => !scalePool.includes(midi));
+  return { registerPool, scalePool, accidentalPool };
 }
 
-function randomTarget(previous = null) {
-  const pool = getAllowedWrittenNotes();
-  if (pool.length === 0) {
+function resetAccidentalWindow() {
+  accidentalWindowSlotsLeft = 8;
+  accidentalNeededInWindow = scaleRegisterControls.isAddAccidentalsEnabled() ? randomInt(0, 1) : 0;
+}
+
+function chooseAccidentalNeededNow() {
+  if (!scaleRegisterControls.isAddAccidentalsEnabled()) {
+    return false;
+  }
+  if (accidentalWindowSlotsLeft <= 0) {
+    resetAccidentalWindow();
+  }
+  if (accidentalNeededInWindow <= 0) {
+    return false;
+  }
+  if (accidentalNeededInWindow >= accidentalWindowSlotsLeft) {
+    return true;
+  }
+  return Math.random() < (accidentalNeededInWindow / accidentalWindowSlotsLeft);
+}
+
+function consumeAccidentalWindow(isAccidental) {
+  if (accidentalWindowSlotsLeft <= 0) {
+    resetAccidentalWindow();
+  }
+  accidentalWindowSlotsLeft = Math.max(0, accidentalWindowSlotsLeft - 1);
+  if (isAccidental && accidentalNeededInWindow > 0) {
+    accidentalNeededInWindow -= 1;
+  }
+}
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickFromPool(pool) {
+  if (!pool || pool.length === 0) {
+    return null;
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getNextTargetCandidate(previous = null) {
+  const pools = getAllowedPools();
+  const allPool = pools.registerPool;
+  if (allPool.length === 0) {
     return null;
   }
 
-  if (pool.length === 1) {
-    return pool[0];
+  const needAccidental = chooseAccidentalNeededNow();
+  let preferredPool = needAccidental ? pools.accidentalPool : pools.scalePool;
+  if (preferredPool.length === 0) {
+    preferredPool = needAccidental ? pools.scalePool : pools.accidentalPool;
+  }
+  if (preferredPool.length === 0) {
+    preferredPool = allPool;
   }
 
-  let next = previous;
-  while (next === previous) {
-    next = pool[Math.floor(Math.random() * pool.length)];
+  let candidate = pickFromPool(preferredPool);
+  if (candidate === null) {
+    return null;
   }
-  return next;
+
+  if (previous !== null && preferredPool.length > 1) {
+    let guard = 0;
+    while (candidate === previous && guard < 10) {
+      candidate = pickFromPool(preferredPool);
+      guard += 1;
+    }
+  }
+  if (candidate === previous && allPool.length > 1) {
+    let guard = 0;
+    while (candidate === previous && guard < 10) {
+      candidate = pickFromPool(allPool);
+      guard += 1;
+    }
+  }
+
+  const isAccidental = !pools.scalePool.includes(candidate);
+  consumeAccidentalWindow(isAccidental);
+  return candidate;
+}
+
+function randomTarget(previous = null) {
+  const candidate = getNextTargetCandidate(previous);
+  if (candidate === null) {
+    return null;
+  }
+  return candidate;
 }
 
 function renderTarget(writtenMidi) {
-  const svg = window.ClarinetStaffRenderer.renderNoteSequenceSvg({
-    notes: [{ writtenMidi, fill: "#10634f", stemColor: "#10634f" }],
+  const svg = window.ClarinetVexRenderer.renderNoteSequenceSvg({
+    notes: [{ writtenMidi, fill: NOTE_COLORS.toPlay, stemColor: NOTE_COLORS.toPlay }],
     width: 420,
     height: 210,
-    scale: scaleRegisterControls.getScale()
+    scale: scaleRegisterControls.getScale(),
+    noteColor: NOTE_COLORS.neutral
   });
   svg.setAttribute("class", "staff-svg");
   svg.style.maxWidth = "100%";
@@ -258,15 +340,23 @@ function init() {
       clarion: regClarion,
       altissimo: regAltissimo
     },
+    addAccidentalsCheckbox: addAccidentalsEl,
     defaultScale: "C_MAJOR"
   });
 
   scaleSelect.addEventListener("change", setNextTarget);
   [regChalumeau, regClarion, regAltissimo].forEach((input) => {
     input.addEventListener("change", () => {
+      resetAccidentalWindow();
       setNextTarget();
     });
   });
+  if (addAccidentalsEl) {
+    addAccidentalsEl.addEventListener("change", () => {
+      resetAccidentalWindow();
+      setNextTarget();
+    });
+  }
   bottomBar = window.BottomBar.init({
     startLabel: "Start",
     stopLabel: "Stop",
@@ -281,6 +371,7 @@ function init() {
   if (scoreStatusEl) {
     scoreStatusEl.textContent = "Press Start, then play the shown target note as fast as possible.";
   }
+  resetAccidentalWindow();
   syncBottomBarState();
 }
 

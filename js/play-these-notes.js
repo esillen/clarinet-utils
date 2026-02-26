@@ -1,4 +1,5 @@
 const { TUNING_OFFSETS } = window.ClarinetCore;
+const NOTE_COLORS = window.ClarinetVexRenderer.NOTE_COLORS;
 
 const DIFFICULTY_PRESETS = {
   easy: {
@@ -24,6 +25,7 @@ const difficultySelect = document.getElementById("ptn2-difficulty");
 const regChalumeau = document.getElementById("ptn2-reg-chalumeau");
 const regClarion = document.getElementById("ptn2-reg-clarion");
 const regAltissimo = document.getElementById("ptn2-reg-altissimo");
+const addAccidentalsEl = document.getElementById("ptn2-add-accidentals");
 const scoreStatusEl = document.getElementById("ptn2-score-status");
 const roundsEl = document.getElementById("ptn2-rounds");
 const npmEl = document.getElementById("ptn2-npm");
@@ -71,24 +73,45 @@ function initializeTuning() {
 }
 
 function getAllowedWrittenNotes() {
-  return scaleRegisterControls.getScaleFilteredRegisterPool();
+  const registerPool = scaleRegisterControls.getRegisterPool();
+  const scalePool = scaleRegisterControls.filterToScale(registerPool);
+  const accidentalPool = registerPool.filter((midi) => !scalePool.includes(midi));
+  return {
+    registerPool,
+    scalePool,
+    accidentalPool
+  };
 }
 
-function pickNextIndex(currentIndex, poolLength, config) {
-  const candidates = [];
-  for (let i = 0; i < poolLength; i += 1) {
-    const distance = Math.abs(i - currentIndex);
-    if (distance > 0 && distance <= config.maxJump) {
-      candidates.push(i);
-    }
+function getAccidentalRange() {
+  if (difficultySelect.value === "easy") {
+    return { min: 0, max: 1 };
   }
-
-  if (candidates.length === 0) {
-    return randomInt(0, poolLength - 1);
+  if (difficultySelect.value === "hard") {
+    return { min: 1, max: 3 };
   }
+  return { min: 0, max: 2 };
+}
 
-  const near = candidates.filter((idx) => Math.abs(idx - currentIndex) <= 2);
-  const far = candidates.filter((idx) => Math.abs(idx - currentIndex) >= 4);
+function planAccidentalTargets(noteCount) {
+  const targets = new Set();
+  if (!scaleRegisterControls.isAddAccidentalsEnabled() || noteCount <= 0) {
+    return targets;
+  }
+  const range = getAccidentalRange();
+  const targetCount = randomInt(range.min, range.max);
+  while (targets.size < Math.min(noteCount, targetCount)) {
+    targets.add(randomInt(0, noteCount - 1));
+  }
+  return targets;
+}
+
+function chooseNextByJumpBias(currentIndex, candidateIndices, config) {
+  if (candidateIndices.length === 0) {
+    return null;
+  }
+  const near = candidateIndices.filter((idx) => Math.abs(idx - currentIndex) <= 2);
+  const far = candidateIndices.filter((idx) => Math.abs(idx - currentIndex) >= 4);
 
   if (config.jumpBias === "small" && near.length > 0) {
     return near[randomInt(0, near.length - 1)];
@@ -105,25 +128,55 @@ function pickNextIndex(currentIndex, poolLength, config) {
       return near[randomInt(0, near.length - 1)];
     }
   }
-
-  return candidates[randomInt(0, candidates.length - 1)];
+  return candidateIndices[randomInt(0, candidateIndices.length - 1)];
 }
 
 function generateSequence() {
-  const pool = getAllowedWrittenNotes();
+  const pools = getAllowedWrittenNotes();
+  const pool = pools.registerPool;
   const difficulty = DIFFICULTY_PRESETS[difficultySelect.value] || DIFFICULTY_PRESETS.easy;
+  const scaleSet = new Set(pools.scalePool);
+  const accidentalTargets = planAccidentalTargets(NOTES_PER_SEQUENCE);
 
   if (pool.length === 0) {
     return [];
   }
 
+  const chooseStartAccidental = pools.accidentalPool.length > 0 && accidentalTargets.has(0);
+  let startPool = chooseStartAccidental ? pools.accidentalPool : pools.scalePool;
+  if (startPool.length === 0) {
+    startPool = pools.scalePool.length > 0 ? pools.scalePool : pools.accidentalPool;
+  }
+  if (startPool.length === 0) {
+    return [];
+  }
+
   const sequence = [];
-  let currentPoolIndex = randomInt(0, pool.length - 1);
-  sequence.push(pool[currentPoolIndex]);
+  let currentMidi = startPool[randomInt(0, startPool.length - 1)];
+  sequence.push(currentMidi);
 
   while (sequence.length < NOTES_PER_SEQUENCE) {
-    currentPoolIndex = pickNextIndex(currentPoolIndex, pool.length, difficulty);
-    sequence.push(pool[currentPoolIndex]);
+    const currentIndex = pool.indexOf(currentMidi);
+    const candidates = [];
+    for (let i = 0; i < pool.length; i += 1) {
+      const distance = Math.abs(i - currentIndex);
+      if (distance > 0 && distance <= difficulty.maxJump) {
+        candidates.push(i);
+      }
+    }
+
+    const wantAccidental = pools.accidentalPool.length > 0 && accidentalTargets.has(sequence.length);
+    const preferred = candidates.filter((idx) => {
+      const midi = pool[idx];
+      const isAccidental = !scaleSet.has(midi);
+      return wantAccidental ? isAccidental : !isAccidental;
+    });
+    const chosenIndex = chooseNextByJumpBias(currentIndex, preferred.length > 0 ? preferred : candidates, difficulty);
+    if (chosenIndex === null) {
+      break;
+    }
+    currentMidi = pool[chosenIndex];
+    sequence.push(currentMidi);
   }
 
   return sequence;
@@ -153,19 +206,17 @@ function renderSequence() {
   const width = Math.max(520, 140 + currentSequence.length * 86);
   const notes = currentSequence.map((writtenMidi, index) => {
     if (index < currentIndex) {
-      return { writtenMidi, fill: "#0f7c62", stemColor: "#0f7c62" };
+      return { writtenMidi, fill: NOTE_COLORS.correct, stemColor: NOTE_COLORS.correct };
     }
-    if (index === currentIndex) {
-      return { writtenMidi, fill: "#10634f", stemColor: "#10634f" };
-    }
-    return { writtenMidi, fill: "#7faea3", stemColor: "#7faea3" };
+    return { writtenMidi, fill: NOTE_COLORS.toPlay, stemColor: NOTE_COLORS.toPlay };
   });
 
-  const svg = window.ClarinetStaffRenderer.renderNoteSequenceSvg({
+  const svg = window.ClarinetVexRenderer.renderNoteSequenceSvg({
     width,
     height: 220,
     scale: scaleRegisterControls.getScale(),
-    notes
+    notes,
+    noteColor: NOTE_COLORS.neutral
   });
   svg.classList.add("staff-svg");
   svg.style.maxWidth = "100%";
@@ -374,6 +425,7 @@ function init() {
       clarion: regClarion,
       altissimo: regAltissimo
     },
+    addAccidentalsCheckbox: addAccidentalsEl,
     defaultScale: "C_MAJOR"
   });
 
