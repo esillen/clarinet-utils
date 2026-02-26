@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transpose Notes From Concert Pitch</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav">
+      <a href="index.html">← Back to utilities</a>
+    </nav>
+
+    <header>
+      <h1>Transpose Notes From Concert Pitch</h1>
+      <p>Read the sequence in concert pitch and play sounds that match those concert notes. You must transpose in your head. After each sequence, a 1 second breathing pause starts automatically.</p>
+    </header>
+
+    <div id="transpose-concert-workspace" class="workspace">
+      <section class="game-controls utility-panel">
+        <div class="control-row">
+          <p id="tcp-current-tuning" class="status">Clarinet tuning: -</p>
+        </div>
+
+        <div class="control-row">
+          <label for="tcp-scale">Scale</label>
+          <select id="tcp-scale">
+            <option value="C_MAJOR">C Major</option>
+            <option value="G_MAJOR">G Major</option>
+            <option value="D_MAJOR">D Major</option>
+            <option value="A_MAJOR">A Major</option>
+            <option value="F_MAJOR">F Major</option>
+            <option value="BB_MAJOR">B♭ Major</option>
+            <option value="A_MINOR">A Minor</option>
+            <option value="CHROMATIC">Chromatic</option>
+          </select>
+        </div>
+
+        <div class="control-row">
+          <label for="tcp-difficulty">Difficulty</label>
+          <select id="tcp-difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div class="control-row">
+          <label>Registers</label>
+          <div class="register-options">
+            <label for="tcp-reg-chalumeau"><input id="tcp-reg-chalumeau" type="checkbox" checked> Chalumeau</label>
+            <label for="tcp-reg-clarion"><input id="tcp-reg-clarion" type="checkbox" checked> Clarion</label>
+            <label for="tcp-reg-altissimo"><input id="tcp-reg-altissimo" type="checkbox" checked> Altissimo</label>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <label for="tcp-add-accidentals">Add sharps and flats</label>
+          <input id="tcp-add-accidentals" type="checkbox">
+        </div>
+
+      </section>
+
+      <section class="score-panel utility-panel">
+        <h2>Target Sequence</h2>
+        <p id="tcp-score-status" class="muted">Press Start, then play the concert-pitch notes shown here.</p>
+        <div id="tcp-score"></div>
+        <p id="tcp-note-label" class="muted"></p>
+      </section>
+      
+      <section class="game-info utility-panel">
+        <article class="game-card">
+          <h2>Sequences</h2>
+          <p id="tcp-rounds" class="big">0</p>
+        </article>
+        <article class="game-card">
+          <h2>Notes / Minute</h2>
+          <p id="tcp-npm" class="big">0.0</p>
+        </article>
+        <article class="game-card">
+          <h2>Last Reaction</h2>
+          <p id="tcp-reaction" class="big">-</p>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/music-core.js"></script>
+  <script src="js/dev-mode.js"></script>
+  <script src="js/bottom-bar.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.js"></script>
+  <script src="js/vexflow-renderer.js"></script>
+  <script src="js/scale-register-controls.js"></script>
+  <script src="js/pitch-detector.js"></script>
+  <script src="js/transpose-concert-pitch.js"></script>
+</body>
+</html>

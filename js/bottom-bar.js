@@ -269,7 +269,7 @@
     ensureDom();
     const concert = concertLabel || "-";
     const transposed = transposedLabel || "-";
-    pitchEl.textContent = `concert: ${concert} | transposed: ${transposed}`;
+    pitchEl.innerHTML = `<span class="bottom-bar-pitch-line">concert: ${concert}</span><span class="bottom-bar-pitch-sep"> | </span><span class="bottom-bar-pitch-line">transposed: ${transposed}</span>`;
   }
 
   function clearDetectedPitches() {
