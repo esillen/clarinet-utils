@@ -4,11 +4,6 @@
     imageUrl: "assets/clarinet-fingering-template.svg",
     sourceUrl: "https://commons.wikimedia.org/wiki/File:Clarinet-fingering-template.svg",
     license: "CC0"
-  },
-  publicDomainChart: {
-    imageUrl: "assets/clarinette-doigte.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Clarinette_doigte.jpg",
-    license: "Public domain"
   }
 };
 
@@ -451,7 +446,7 @@ const FINGERING_DB = {
 };
 
   const WFG_SOURCE_NOTES = "Source: Woodwind Fingering Guide (Boehm clarinet compact notation).";
-  const WFG_OVERRIDE_DB = {
+  const LEGACY_WFG_OVERRIDE_DB = {
     52: { noteLabel: "E3", fingerings: [
       { name: "Standard", type: "Primary", keys: "T 123E|123", info: WFG_SOURCE_NOTES },
       { name: "Alt", type: "Alternate", keys: "T 123|123E", info: WFG_SOURCE_NOTES },
@@ -588,6 +583,12 @@ const FINGERING_DB = {
     ] }
   };
 
+  const WFG_OVERRIDE_DB = (
+    window.ClarinetWfgAltDb && typeof window.ClarinetWfgAltDb === "object"
+      ? window.ClarinetWfgAltDb
+      : LEGACY_WFG_OVERRIDE_DB
+  );
+
   Object.keys(FINGERING_DB).forEach((midiKey) => {
     delete FINGERING_DB[midiKey];
   });
@@ -596,7 +597,7 @@ const FINGERING_DB = {
   });
 
   function getVisualGuide(type) {
-    return type === "Trill" ? FINGERING_VISUALS.publicDomainChart : FINGERING_VISUALS.template;
+    return FINGERING_VISUALS.template;
   }
 
   let templateSvgTextPromise = null;
@@ -1189,7 +1190,6 @@ const FINGERING_DB = {
     return [
       `Fingering data: <a href="https://www.wfg.woodwind.org/clarinet/" target="_blank" rel="noopener noreferrer">Woodwind Fingering Guide (clarinet)</a>`,
       `Primary/Alternate chart: <a href="${FINGERING_VISUALS.template.sourceUrl}" target="_blank" rel="noopener noreferrer">Clarinet-fingering-template.svg</a> (${FINGERING_VISUALS.template.license})`,
-      `Trill/convention chart: <a href="${FINGERING_VISUALS.publicDomainChart.sourceUrl}" target="_blank" rel="noopener noreferrer">Clarinette doigte.jpg</a> (${FINGERING_VISUALS.publicDomainChart.license})`
     ].join(" · ");
   }
 

@@ -127,6 +127,11 @@ p {
   --utility-line: #d6d6eb;
 }
 
+.utility-card-dev-pitch {
+  --utility-bg: #eef8ff;
+  --utility-line: #cadef0;
+}
+
 .card:hover,
 .card:focus-visible {
   transform: translateY(-2px);
@@ -1189,4 +1194,43 @@ button:disabled {
     font-size: 0.68rem;
   }
 
+}
+
+.dev-pitch-panel h2 {
+  margin-bottom: 0.15rem;
+  font-size: 2rem;
+}
+
+.dev-note-grid {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.8rem 0 0.9rem;
+}
+
+.dev-note-row-staff {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f7fbfa;
+  padding: 0.3rem 0.35rem;
+  min-height: 136px;
+  overflow: hidden;
+}
+
+.dev-note-row-staff .staff-svg {
+  width: 100%;
+  height: 128px;
+  display: block;
+}
+
+.dev-slider-wrap {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.45rem;
+}
+
+#dev-pitch-slider {
+  width: 100%;
+  height: 98px;
+  display: block;
 }

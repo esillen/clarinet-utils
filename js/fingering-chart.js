@@ -87,7 +87,7 @@ function renderEntry(entry, fingerings) {
 
     const text = document.createElement("div");
     text.className = "chart-fingering-text";
-    const notation = window.ClarinetFingerings.formatCompactNotation(fingering.keys);
+    const notation = window.ClarinetFingerings.formatCompactNotation(fingering);
     const description = window.ClarinetFingerings.describeFingering(fingering, {
       writtenMidi: entry.writtenMidi
     });

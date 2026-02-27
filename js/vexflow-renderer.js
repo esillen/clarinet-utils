@@ -173,7 +173,9 @@
 
     const signatureMap = signatureAccidentalMap(keySignature);
     if (parsed.accidental) {
-      staveNote.addModifier(new VF.Accidental(parsed.accidental), 0);
+      if (signatureMap[parsed.letter] !== parsed.accidental) {
+        staveNote.addModifier(new VF.Accidental(parsed.accidental), 0);
+      }
     } else if (signatureMap[parsed.letter]) {
       staveNote.addModifier(new VF.Accidental("n"), 0);
     }

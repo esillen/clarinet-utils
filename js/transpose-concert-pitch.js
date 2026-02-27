@@ -44,13 +44,11 @@ let currentTuning = "Bb";
 let currentSequence = [];
 let currentIndex = 0;
 let sequenceShownAt = 0;
-let currentCandidate = null;
-let lastAcceptedAt = 0;
 let sequenceCount = 0;
 let totalAcceptedNotes = 0;
 let runStartedAt = 0;
 let scaleRegisterControls = null;
-const pitchSmoother = window.PitchFinder.createMedianSmoother(5);
+const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 let bottomBar = null;
 let unavailableForCurrentTuning = false;
 let timeDomainBuffer = null;
@@ -240,7 +238,6 @@ function renderSequence() {
 function beginNextSequence() {
   currentSequence = generateSequence();
   currentIndex = 0;
-  currentCandidate = null;
   sequenceShownAt = performance.now();
   inBreathingPause = false;
 
@@ -275,14 +272,9 @@ function startBreathingPause() {
 }
 
 function acceptCurrentNote() {
-  const now = performance.now();
-  if (now - lastAcceptedAt < 170) {
-    return;
-  }
-
   currentIndex += 1;
   totalAcceptedNotes += 1;
-  lastAcceptedAt = now;
+  const now = performance.now();
 
   const reactionMs = now - sequenceShownAt;
   reactionEl.textContent = `${Math.round(reactionMs)} ms`;
@@ -296,16 +288,6 @@ function acceptCurrentNote() {
 
 function checkMatch(concertMidi) {
   if (!isRunning || inBreathingPause || currentSequence.length === 0 || currentIndex >= currentSequence.length) {
-    return;
-  }
-  const now = performance.now();
-
-  if (!currentCandidate || currentCandidate.midi !== concertMidi) {
-    currentCandidate = { midi: concertMidi, startedAt: now };
-    return;
-  }
-
-  if (now - currentCandidate.startedAt < 130) {
     return;
   }
 
@@ -365,8 +347,8 @@ async function startMicrophone() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioContext.createMediaStreamSource(micStream);
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.25;
+    analyser.fftSize = 4096;
+    analyser.smoothingTimeConstant = 0;
     source.connect(analyser);
 
     scaleRegisterControls.setDisabled(true);
@@ -374,8 +356,6 @@ async function startMicrophone() {
     isRunning = true;
     inBreathingPause = false;
     runStartedAt = performance.now();
-    currentCandidate = null;
-    lastAcceptedAt = 0;
     sequenceCount = 0;
     totalAcceptedNotes = 0;
     reactionEl.textContent = "-";

@@ -22,12 +22,10 @@ let targetWrittenMidi = null;
 let targetShownAt = 0;
 let hitCount = 0;
 let runStartedAt = 0;
-let currentCandidate = null;
-let lastHitAt = 0;
 let isRunning = false;
 let currentTuning = "Bb";
 let scaleRegisterControls = null;
-const pitchSmoother = window.PitchFinder.createMedianSmoother(5);
+const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 let bottomBar = null;
 let accidentalWindowSlotsLeft = 0;
 let accidentalNeededInWindow = 0;
@@ -175,7 +173,6 @@ function setNextTarget() {
 
   targetWrittenMidi = next;
   targetShownAt = performance.now();
-  currentCandidate = null;
   renderTarget(targetWrittenMidi);
 }
 
@@ -191,13 +188,8 @@ function updateStats() {
 }
 
 function acceptHit() {
-  const now = performance.now();
-  if (now - lastHitAt < 220) {
-    return;
-  }
-
   hitCount += 1;
-  lastHitAt = now;
+  const now = performance.now();
 
   const reactionMs = now - targetShownAt;
   reactionEl.textContent = `${Math.round(reactionMs)} ms`;
@@ -211,16 +203,6 @@ function checkMatch(concertMidi) {
   }
 
   const writtenMidi = concertMidi + TUNING_OFFSETS[currentTuning];
-  const now = performance.now();
-
-  if (!currentCandidate || currentCandidate.midi !== writtenMidi) {
-    currentCandidate = { midi: writtenMidi, startedAt: now };
-    return;
-  }
-
-  if (now - currentCandidate.startedAt < 140) {
-    return;
-  }
 
   if (writtenMidi === targetWrittenMidi) {
     acceptHit();
@@ -282,8 +264,8 @@ async function startMicrophone() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioContext.createMediaStreamSource(micStream);
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.25;
+    analyser.fftSize = 4096;
+    analyser.smoothingTimeConstant = 0;
     source.connect(analyser);
 
     scaleRegisterControls.setDisabled(true);

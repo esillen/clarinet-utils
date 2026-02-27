@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dev Pitch Monitor</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav">
+      <a href="index.html">← Back to utilities</a>
+    </nav>
+
+    <header>
+      <h1>Dev Pitch Monitor</h1>
+      <p>Live note/debug view: current note + Hz, rolling notation (2 systems, 8 notes each), and continuous pitch slider.</p>
+    </header>
+
+    <div class="workspace">
+      <section class="fingerings utility-panel dev-pitch-panel">
+        <h2 id="dev-current-note">-</h2>
+        <p id="dev-current-hz" class="muted">- Hz</p>
+
+        <div class="dev-note-grid" aria-label="Last played notes on two staffs">
+          <div id="dev-row-1" class="dev-note-row-staff"></div>
+          <div id="dev-row-2" class="dev-note-row-staff"></div>
+        </div>
+
+        <div class="dev-slider-wrap">
+          <canvas id="dev-pitch-slider" width="960" height="120"></canvas>
+          <p id="dev-slider-label" class="muted">Pitch position: -</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/music-core.js"></script>
+  <script src="js/dev-mode.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.js"></script>
+  <script src="js/vexflow-renderer.js"></script>
+  <script src="js/bottom-bar.js"></script>
+  <script src="js/pitch-detector.js"></script>
+  <script src="js/dev-pitch-monitor.js"></script>
+</body>
+</html>

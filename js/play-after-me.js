@@ -53,11 +53,9 @@ let resolveRoundInput = null;
 let cancelRoundInput = null;
 let activeRoundToken = 0;
 let detectedSequence = [];
-let currentCandidate = null;
-let lastAcceptedAt = 0;
 let currentTuning = "Bb";
 let scaleRegisterControls = null;
-const pitchSmoother = window.PitchFinder.createMedianSmoother(5);
+const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 let bottomBar = null;
 let timeDomainBuffer = null;
 
@@ -279,24 +277,12 @@ function renderScore(expectedWritten, playedConcert = [], reveal = false, reveal
 }
 
 function maybeAcceptDetectedNote(midi) {
-  const now = performance.now();
-
-  if (!currentCandidate || Math.abs(currentCandidate.midi - midi) > 0) {
-    currentCandidate = { midi, startedAt: now };
-    return;
-  }
-
-  if (now - currentCandidate.startedAt < 170) {
-    return;
-  }
-
   const last = detectedSequence[detectedSequence.length - 1];
-  if (last === midi || now - lastAcceptedAt < 180) {
+  if (last === midi) {
     return;
   }
 
   detectedSequence.push(midi);
-  lastAcceptedAt = now;
 
   if (resolveRoundInput) {
     resolveRoundInput([...detectedSequence]);
@@ -355,8 +341,8 @@ async function setupAudio() {
 
   if (!analyser) {
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.25;
+    analyser.fftSize = 4096;
+    analyser.smoothingTimeConstant = 0;
     const source = audioContext.createMediaStreamSource(micStream);
     source.connect(analyser);
   }
@@ -465,8 +451,6 @@ function listenForPhrase(expectedLength, token) {
   syncBottomBarState();
   pitchSmoother.clear();
   detectedSequence = [];
-  currentCandidate = null;
-  lastAcceptedAt = 0;
   heardNotesEl.textContent = "Listening...";
   if (scoreStatusEl) {
     scoreStatusEl.textContent = "Your turn: play it back.";

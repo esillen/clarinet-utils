@@ -7,7 +7,6 @@
   let templateMetaPromise = null;
   const overlayPrototypeCache = new Map();
   const overlayPromiseCache = new Map();
-  const GENERIC_WFG_INFO = "Source: Woodwind Fingering Guide (Boehm clarinet compact notation).";
 
   function setLayerVisibility(layer, visible) {
     const style = layer.getAttribute("style") || "";
@@ -168,63 +167,19 @@
     return visual;
   }
 
-  function compactNotation(keysText) {
-    return String(keysText || "").trim();
+  function compactNotation(fingeringOrText) {
+    if (fingeringOrText && typeof fingeringOrText === "object") {
+      if (typeof fingeringOrText.sourceNotation === "string" && fingeringOrText.sourceNotation.trim()) {
+        return fingeringOrText.sourceNotation.trim();
+      }
+      return String(fingeringOrText.keys || "").trim();
+    }
+    return String(fingeringOrText || "").trim();
   }
 
   function deriveDescription(fingering, options = {}) {
     const info = String(fingering.info || "").trim();
-    if (info && info !== GENERIC_WFG_INFO) {
-      return info;
-    }
-
-    const labels = fingerings.resolveLayerLabelsForFingering(fingering.keys || fingering.keyIds, {
-      writtenMidi: options.writtenMidi
-    });
-    const rightPinkyLabels = new Set([
-      "e",
-      "f",
-      "fis",
-      "gis",
-      "ais",
-      "additional_right_1",
-      "additional_right_2",
-      "additional_right_3",
-      "additional_right_4"
-    ]);
-    const leftPinkyLabels = new Set([
-      "e_left",
-      "f_left",
-      "fis_left",
-      "ais1",
-      "dis",
-      "cis1"
-    ]);
-
-    let hasRightPinky = false;
-    let hasLeftPinky = false;
-    labels.forEach((label) => {
-      if (rightPinkyLabels.has(label)) {
-        hasRightPinky = true;
-      }
-      if (leftPinkyLabels.has(label)) {
-        hasLeftPinky = true;
-      }
-    });
-
-    if (hasLeftPinky && hasRightPinky) {
-      return "Use in combination with little-finger keys on both hands.";
-    }
-    if (hasRightPinky) {
-      return "Use in combination with fingerings using right little finger or no little fingers.";
-    }
-    if (hasLeftPinky) {
-      return "Use in combination with fingerings using left little finger or no little fingers.";
-    }
-    if (String(fingering.keys || "").includes("R")) {
-      return "Includes register key support for upper-register response.";
-    }
-    return "No little fingers required.";
+    return info;
   }
 
   function renderFingeringVisualFrame(fingering, options = {}) {
@@ -256,7 +211,7 @@
     type.innerHTML = `<strong>Type:</strong> ${fingering.type}`;
 
     const notation = document.createElement("p");
-    notation.innerHTML = `<strong>Notation:</strong> ${compactNotation(fingering.keys)}`;
+    notation.innerHTML = `<strong>Notation:</strong> ${compactNotation(fingering)}`;
     const description = document.createElement("p");
     description.innerHTML = `<strong>Description:</strong> ${deriveDescription(fingering, options)}`;
     const content = document.createElement("div");

@@ -18,7 +18,7 @@ const PITCH_MIDI_MAX = 96;
 let pitchTrace = new Array(TRACE_LENGTH).fill(null);
 let frequencyBins = null;
 let currentTuning = "Bb";
-const pitchSmoother = window.PitchFinder.createMedianSmoother(5);
+const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
 let noPitchFrameCount = 0;
 const NO_PITCH_PLACEHOLDER_FRAMES = 16;
 let bottomBar = null;
@@ -340,8 +340,8 @@ async function startMicrophone() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioContext.createMediaStreamSource(micStream);
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.25;
+    analyser.fftSize = 4096;
+    analyser.smoothingTimeConstant = 0;
     source.connect(analyser);
 
     updateBottomBarListening(true);
