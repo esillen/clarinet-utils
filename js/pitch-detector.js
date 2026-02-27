@@ -1,5 +1,12 @@
 (function () {
   function autoCorrelate(buffer, sampleRate) {
+    const perf = window.ClarinetPerf;
+    return perf && perf.isEnabled()
+      ? perf.measure("pitch.autoCorrelate", () => runAutoCorrelate(buffer, sampleRate))
+      : runAutoCorrelate(buffer, sampleRate);
+  }
+
+  function runAutoCorrelate(buffer, sampleRate) {
     const size = buffer.length;
     let rms = 0;
     for (let i = 0; i < size; i += 1) {

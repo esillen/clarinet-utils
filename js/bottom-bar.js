@@ -21,8 +21,15 @@
   let targetLevel = 0;
   let smoothLevel = 0;
   let lastSignalAt = 0;
-  const HISTORY_SIZE = 220;
+  const HISTORY_SIZE = 120;
+  const FAST_FRAME_INTERVAL_MS = 16;
+  const MEDIUM_FRAME_INTERVAL_MS = 24;
+  const SLOW_FRAME_INTERVAL_MS = 33;
+  const BACKGROUND_FRAME_INTERVAL_MS = 66;
   const history = new Array(HISTORY_SIZE).fill(0);
+  let lastFrameAt = 0;
+  let frameIntervalMs = SLOW_FRAME_INTERVAL_MS;
+  let frameCostEmaMs = 0.8;
 
   let cachedW = 0;
   let cachedH = 0;
@@ -111,7 +118,7 @@
     if (!canvasEl || !ctx) {
       return;
     }
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const w = Math.max(1, Math.floor(canvasEl.clientWidth));
     const h = Math.max(1, Math.floor(canvasEl.clientHeight));
     if (w === cachedW && h === cachedH) {
@@ -135,6 +142,8 @@
     if (!ctx) {
       return;
     }
+    const perf = window.ClarinetPerf;
+    const t0 = perf && perf.isEnabled() ? performance.now() : 0;
     const width = cachedW || 1;
     const height = cachedH || 1;
 
@@ -144,33 +153,18 @@
     const baseAmp = listening ? Math.max(1.6, height * 0.07) : Math.max(1.1, height * 0.04);
     const dynamicAmp = listening ? height * (0.08 + smoothLevel * 0.22) : height * 0.02;
 
-    const bg = ctx.createLinearGradient(0, 0, width, 0);
-    bg.addColorStop(0, listening ? "rgba(28, 58, 67, 0.90)" : "rgba(166, 173, 178, 0.88)");
-    bg.addColorStop(0.5, listening ? "rgba(36, 74, 84, 0.92)" : "rgba(178, 185, 189, 0.9)");
-    bg.addColorStop(1, listening ? "rgba(28, 58, 67, 0.90)" : "rgba(166, 173, 178, 0.88)");
-    ctx.fillStyle = bg;
+    ctx.fillStyle = listening ? "rgba(32, 66, 76, 0.91)" : "rgba(171, 178, 183, 0.9)";
     ctx.fillRect(0, 0, width, height);
 
-    const lineCount = 4;
+    const lineCount = 2;
     const speed = listening ? 0.0023 + smoothLevel * 0.0105 : 0.00075;
     for (let line = 0; line < lineCount; line += 1) {
       const phase = (timeMs * speed) + line * 1.18;
       const lineAlpha = (listening ? 0.58 : 0.26) + smoothLevel * (listening ? 0.34 : 0.05) - line * 0.08;
-      const stroke = ctx.createLinearGradient(0, 0, width, 0);
-      if (listening) {
-        stroke.addColorStop(0, `rgba(189, 244, 255, ${lineAlpha * 0.7})`);
-        stroke.addColorStop(0.5, `rgba(220, 255, 255, ${lineAlpha})`);
-        stroke.addColorStop(1, `rgba(189, 244, 255, ${lineAlpha * 0.7})`);
-      } else {
-        stroke.addColorStop(0, `rgba(238, 243, 246, ${lineAlpha * 0.65})`);
-        stroke.addColorStop(0.5, `rgba(248, 250, 252, ${lineAlpha})`);
-        stroke.addColorStop(1, `rgba(238, 243, 246, ${lineAlpha * 0.65})`);
-      }
-
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = Math.max(1.4, 2.2 - line * 0.2);
-      ctx.shadowColor = listening ? "rgba(195, 247, 255, 0.34)" : "transparent";
-      ctx.shadowBlur = listening ? 5 : 0;
+      ctx.strokeStyle = listening
+        ? `rgba(213, 247, 255, ${lineAlpha * 0.9})`
+        : `rgba(244, 247, 249, ${lineAlpha * 0.85})`;
+      ctx.lineWidth = Math.max(1.2, 1.9 - line * 0.2);
       ctx.beginPath();
 
       for (let i = 0; i < history.length; i += 1) {
@@ -188,10 +182,19 @@
       ctx.stroke();
     }
 
-    ctx.shadowBlur = 0;
+    if (perf && t0 > 0) {
+      perf.record("bottomBar.drawWave", performance.now() - t0);
+    }
   }
 
   function animate(timeMs) {
+    const perf = window.ClarinetPerf;
+    if (timeMs - lastFrameAt < frameIntervalMs) {
+      rafId = requestAnimationFrame(animate);
+      return;
+    }
+    lastFrameAt = timeMs;
+    const t0 = performance.now();
     resizeCanvasIfNeeded();
 
     const ageMs = performance.now() - lastSignalAt;
@@ -206,6 +209,23 @@
     pushHistory(historyValue);
 
     drawWave(timeMs);
+    const frameCostMs = performance.now() - t0;
+    frameCostEmaMs += (frameCostMs - frameCostEmaMs) * 0.12;
+
+    let targetInterval = listening ? FAST_FRAME_INTERVAL_MS : SLOW_FRAME_INTERVAL_MS;
+    if (frameCostEmaMs > 3.5) {
+      targetInterval = Math.max(targetInterval, SLOW_FRAME_INTERVAL_MS);
+    } else if (frameCostEmaMs > 1.8) {
+      targetInterval = Math.max(targetInterval, MEDIUM_FRAME_INTERVAL_MS);
+    }
+    if (document.hidden) {
+      targetInterval = BACKGROUND_FRAME_INTERVAL_MS;
+    }
+    frameIntervalMs += (targetInterval - frameIntervalMs) * 0.22;
+
+    if (perf && perf.isEnabled()) {
+      perf.record("bottomBar.frame", frameCostMs);
+    }
     rafId = requestAnimationFrame(animate);
   }
 

@@ -1,5 +1,6 @@
 (function () {
   const STORAGE_KEY = "clarinet_tuning";
+  const DEV_MODE_KEY = "clarinet_dev_mode_v1";
   const TUNING_OFFSETS = {
     Bb: 2,
     A: 3,
@@ -59,8 +60,83 @@
     return Math.round(1200 * Math.log2(freq / midiToFreq(midi)));
   }
 
+  function createPerf() {
+    const stats = {};
+    let lastReportAt = 0;
+    const REPORT_INTERVAL_MS = 2000;
+    const MAX_ROWS = 8;
+
+    function isEnabled() {
+      try {
+        return localStorage.getItem(DEV_MODE_KEY) === "1";
+      } catch {
+        return false;
+      }
+    }
+
+    function record(name, ms) {
+      if (!isEnabled() || !Number.isFinite(ms)) {
+        return;
+      }
+      const key = String(name || "");
+      if (!stats[key]) {
+        stats[key] = { count: 0, total: 0, max: 0 };
+      }
+      const row = stats[key];
+      row.count += 1;
+      row.total += ms;
+      row.max = Math.max(row.max, ms);
+      maybeReport();
+    }
+
+    function maybeReport() {
+      const now = performance.now();
+      if (now - lastReportAt < REPORT_INTERVAL_MS) {
+        return;
+      }
+      lastReportAt = now;
+      const rows = Object.entries(stats)
+        .map(([name, row]) => ({
+          name,
+          avgMs: row.total / Math.max(1, row.count),
+          maxMs: row.max,
+          count: row.count
+        }))
+        .sort((a, b) => b.avgMs - a.avgMs)
+        .slice(0, MAX_ROWS);
+      if (rows.length === 0) {
+        return;
+      }
+      const summary = rows
+        .map((row) => `${row.name}: avg ${row.avgMs.toFixed(2)}ms, max ${row.maxMs.toFixed(2)}ms, n=${row.count}`)
+        .join(" | ");
+      console.log(`[clarinet-perf] ${summary}`);
+    }
+
+    function measure(name, fn) {
+      if (!isEnabled()) {
+        return fn();
+      }
+      const t0 = performance.now();
+      try {
+        return fn();
+      } finally {
+        record(name, performance.now() - t0);
+      }
+    }
+
+    return {
+      isEnabled,
+      record,
+      measure
+    };
+  }
+
+  const ClarinetPerf = createPerf();
+
   window.ClarinetCore = {
     STORAGE_KEY,
+    DEV_MODE_KEY,
     TUNING_OFFSETS,
     NOTE_NAMES_SHARP,
     NOTE_NAMES_FLAT,
@@ -71,6 +147,9 @@
     freqToMidi,
     freqToMidiFloat,
     midiToName,
-    centsOff
+    centsOff,
+    perf: ClarinetPerf
   };
+
+  window.ClarinetPerf = ClarinetPerf;
 })();

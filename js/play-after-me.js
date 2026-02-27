@@ -57,8 +57,9 @@ let currentCandidate = null;
 let lastAcceptedAt = 0;
 let currentTuning = "Bb";
 let scaleRegisterControls = null;
-const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
+const pitchSmoother = window.PitchFinder.createMedianSmoother(5);
 let bottomBar = null;
+let timeDomainBuffer = null;
 
 function syncBottomBarState() {
   if (!bottomBar) {
@@ -308,7 +309,10 @@ function analysisLoop() {
     return;
   }
 
-  const buffer = new Float32Array(analyser.fftSize);
+  if (!timeDomainBuffer || timeDomainBuffer.length !== analyser.fftSize) {
+    timeDomainBuffer = new Float32Array(analyser.fftSize);
+  }
+  const buffer = timeDomainBuffer;
   analyser.getFloatTimeDomainData(buffer);
   if (bottomBar) {
     bottomBar.updateFromTimeDomain(buffer);
@@ -352,7 +356,7 @@ async function setupAudio() {
   if (!analyser) {
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.8;
+    analyser.smoothingTimeConstant = 0.25;
     const source = audioContext.createMediaStreamSource(micStream);
     source.connect(analyser);
   }

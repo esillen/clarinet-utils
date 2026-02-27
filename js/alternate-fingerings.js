@@ -18,10 +18,11 @@ const PITCH_MIDI_MAX = 96;
 let pitchTrace = new Array(TRACE_LENGTH).fill(null);
 let frequencyBins = null;
 let currentTuning = "Bb";
-const pitchSmoother = window.PitchFinder.createMedianSmoother(7);
+const pitchSmoother = window.PitchFinder.createMedianSmoother(5);
 let noPitchFrameCount = 0;
 const NO_PITCH_PLACEHOLDER_FRAMES = 16;
 let bottomBar = null;
+let timeDomainBuffer = null;
 
 function initializeTuning() {
   currentTuning = window.ClarinetCore.readTuning("Bb");
@@ -286,7 +287,10 @@ function tickPitch() {
     return;
   }
 
-  const buffer = new Float32Array(analyser.fftSize);
+  if (!timeDomainBuffer || timeDomainBuffer.length !== analyser.fftSize) {
+    timeDomainBuffer = new Float32Array(analyser.fftSize);
+  }
+  const buffer = timeDomainBuffer;
   analyser.getFloatTimeDomainData(buffer);
   if (bottomBar) {
     bottomBar.updateFromTimeDomain(buffer);
@@ -337,7 +341,7 @@ async function startMicrophone() {
     const source = audioContext.createMediaStreamSource(micStream);
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.8;
+    analyser.smoothingTimeConstant = 0.25;
     source.connect(analyser);
 
     updateBottomBarListening(true);
