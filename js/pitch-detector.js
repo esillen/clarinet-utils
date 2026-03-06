@@ -1,12 +1,81 @@
 (function () {
-  const YIN_THRESHOLD = 0.15;
-  const PROBABILITY_THRESHOLD = 0.7;
-  const MIN_FREQUENCY = 70;
-  const MAX_FREQUENCY = 500;
-  const VOLUME_THRESHOLD = 0.015;
-  const NOISE_FLOOR_ALPHA = 0.995;
+  const SETTINGS_STORAGE_KEY = "clarinet_pitch_settings_v1";
+  const DEFAULT_SETTINGS = Object.freeze({
+    yinThreshold: 0.15,
+    probabilityThreshold: 0.7,
+    minFrequency: 70,
+    maxFrequency: 500,
+    volumeThreshold: 0.015,
+    noiseFloorAlpha: 0.995
+  });
   const yinBufferCache = new Map();
+  let settings = loadSettings();
   let noiseFloor = 0.01;
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function sanitizeSettings(raw) {
+    const next = {
+      yinThreshold: clamp(Number(raw.yinThreshold), 0.05, 0.35),
+      probabilityThreshold: clamp(Number(raw.probabilityThreshold), 0.3, 0.95),
+      minFrequency: clamp(Number(raw.minFrequency), 40, 300),
+      maxFrequency: clamp(Number(raw.maxFrequency), 250, 2200),
+      volumeThreshold: clamp(Number(raw.volumeThreshold), 0.001, 0.08),
+      noiseFloorAlpha: clamp(Number(raw.noiseFloorAlpha), 0.9, 0.999)
+    };
+    if (!Number.isFinite(next.yinThreshold)) next.yinThreshold = DEFAULT_SETTINGS.yinThreshold;
+    if (!Number.isFinite(next.probabilityThreshold)) next.probabilityThreshold = DEFAULT_SETTINGS.probabilityThreshold;
+    if (!Number.isFinite(next.minFrequency)) next.minFrequency = DEFAULT_SETTINGS.minFrequency;
+    if (!Number.isFinite(next.maxFrequency)) next.maxFrequency = DEFAULT_SETTINGS.maxFrequency;
+    if (!Number.isFinite(next.volumeThreshold)) next.volumeThreshold = DEFAULT_SETTINGS.volumeThreshold;
+    if (!Number.isFinite(next.noiseFloorAlpha)) next.noiseFloorAlpha = DEFAULT_SETTINGS.noiseFloorAlpha;
+    if (next.maxFrequency <= next.minFrequency + 5) {
+      next.maxFrequency = next.minFrequency + 5;
+    }
+    return next;
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (!raw) {
+        return { ...DEFAULT_SETTINGS };
+      }
+      const parsed = JSON.parse(raw);
+      return sanitizeSettings({ ...DEFAULT_SETTINGS, ...parsed });
+    } catch {
+      return { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  function saveSettings() {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  }
+
+  function getSettings() {
+    return { ...settings };
+  }
+
+  function emitSettingsChanged() {
+    window.dispatchEvent(new CustomEvent("clarinet:pitch-settings", { detail: getSettings() }));
+  }
+
+  function updateSettings(nextPartial) {
+    settings = sanitizeSettings({ ...settings, ...(nextPartial || {}) });
+    saveSettings();
+    emitSettingsChanged();
+    return getSettings();
+  }
+
+  function resetSettings() {
+    settings = { ...DEFAULT_SETTINGS };
+    noiseFloor = 0.01;
+    saveSettings();
+    emitSettingsChanged();
+    return getSettings();
+  }
 
   function getYinBuffer(size) {
     if (!yinBufferCache.has(size)) {
@@ -33,10 +102,10 @@
   function runYinPitchDetect(buffer, sampleRate) {
     const rms = calculateRms(buffer);
     if (rms < noiseFloor * 1.5) {
-      noiseFloor = NOISE_FLOOR_ALPHA * noiseFloor + (1 - NOISE_FLOOR_ALPHA) * rms;
+      noiseFloor = settings.noiseFloorAlpha * noiseFloor + (1 - settings.noiseFloorAlpha) * rms;
     }
     const effectiveVolume = Math.max(0, rms - noiseFloor);
-    if (effectiveVolume < VOLUME_THRESHOLD) {
+    if (effectiveVolume < settings.volumeThreshold) {
       return -1;
     }
 
@@ -47,8 +116,8 @@
     }
     const yin = getYinBuffer(yinBufferSize);
 
-    const minTau = Math.max(2, Math.floor(sampleRate / MAX_FREQUENCY));
-    const maxTau = Math.min(yinBufferSize - 1, Math.floor(sampleRate / MIN_FREQUENCY));
+    const minTau = Math.max(2, Math.floor(sampleRate / settings.maxFrequency));
+    const maxTau = Math.min(yinBufferSize - 1, Math.floor(sampleRate / settings.minFrequency));
     if (maxTau <= minTau) {
       return -1;
     }
@@ -69,7 +138,7 @@
     let foundTau = -1;
     let tau = minTau;
     while (tau < maxTau) {
-      if (yin[tau] < YIN_THRESHOLD) {
+      if (yin[tau] < settings.yinThreshold) {
         while (tau + 1 < maxTau && yin[tau + 1] < yin[tau]) {
           tau += 1;
         }
@@ -111,9 +180,9 @@
     const probability = 1 - yin[foundTau];
     if (
       !Number.isFinite(frequency) ||
-      frequency < MIN_FREQUENCY ||
-      frequency > MAX_FREQUENCY ||
-      probability < PROBABILITY_THRESHOLD
+      frequency < settings.minFrequency ||
+      frequency > settings.maxFrequency ||
+      probability < settings.probabilityThreshold
     ) {
       return -1;
     }
@@ -139,6 +208,9 @@
 
   window.PitchFinder = {
     autoCorrelate,
-    createMedianSmoother
+    createMedianSmoother,
+    getSettings,
+    updateSettings,
+    resetSettings
   };
 })();

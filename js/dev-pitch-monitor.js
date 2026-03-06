@@ -2,6 +2,8 @@ const currentNoteEl = document.getElementById("dev-current-note");
 const currentHzEl = document.getElementById("dev-current-hz");
 const row1El = document.getElementById("dev-row-1");
 const row2El = document.getElementById("dev-row-2");
+const settingsControlsEl = document.getElementById("dev-pitch-settings-controls");
+const resetSettingsButton = document.getElementById("dev-pitch-reset");
 const sliderCanvas = document.getElementById("dev-pitch-slider");
 const sliderLabelEl = document.getElementById("dev-slider-label");
 
@@ -20,6 +22,84 @@ const rows = [[], []];
 let writeRow = 0;
 let writeCol = 0;
 let lastPushedMidi = null;
+const settingInputs = {};
+
+const settingSpecs = [
+  { key: "yinThreshold", label: "YIN threshold", min: 0.05, max: 0.35, step: 0.005, decimals: 3 },
+  { key: "probabilityThreshold", label: "Confidence threshold", min: 0.3, max: 0.95, step: 0.01, decimals: 2 },
+  { key: "volumeThreshold", label: "Volume threshold", min: 0.001, max: 0.08, step: 0.001, decimals: 3 },
+  { key: "minFrequency", label: "Minimum Hz", min: 40, max: 300, step: 1, decimals: 0 },
+  { key: "maxFrequency", label: "Maximum Hz", min: 250, max: 2200, step: 1, decimals: 0 },
+  { key: "noiseFloorAlpha", label: "Noise floor alpha", min: 0.9, max: 0.999, step: 0.001, decimals: 3 }
+];
+
+function formatSettingValue(spec, value) {
+  if (!Number.isFinite(value)) {
+    return "-";
+  }
+  return spec.decimals > 0 ? value.toFixed(spec.decimals) : String(Math.round(value));
+}
+
+function setControlsFromSettings(settings) {
+  settingSpecs.forEach((spec) => {
+    const pair = settingInputs[spec.key];
+    if (!pair) {
+      return;
+    }
+    const value = Number(settings[spec.key]);
+    if (!Number.isFinite(value)) {
+      return;
+    }
+    pair.range.value = String(value);
+    pair.value.textContent = formatSettingValue(spec, value);
+  });
+}
+
+function buildPitchSettingsControls() {
+  if (!settingsControlsEl || !window.PitchFinder || typeof window.PitchFinder.getSettings !== "function") {
+    return;
+  }
+
+  settingsControlsEl.innerHTML = "";
+  const settings = window.PitchFinder.getSettings();
+
+  settingSpecs.forEach((spec) => {
+    const row = document.createElement("label");
+    row.className = "dev-setting-row";
+
+    const name = document.createElement("span");
+    name.className = "dev-setting-name";
+    name.textContent = spec.label;
+
+    const value = document.createElement("span");
+    value.className = "dev-setting-value";
+    value.textContent = formatSettingValue(spec, Number(settings[spec.key]));
+
+    const range = document.createElement("input");
+    range.type = "range";
+    range.min = String(spec.min);
+    range.max = String(spec.max);
+    range.step = String(spec.step);
+    range.value = String(settings[spec.key]);
+    range.addEventListener("input", () => {
+      const updated = window.PitchFinder.updateSettings({ [spec.key]: Number(range.value) });
+      setControlsFromSettings(updated);
+    });
+
+    settingInputs[spec.key] = { range, value };
+    row.appendChild(name);
+    row.appendChild(value);
+    row.appendChild(range);
+    settingsControlsEl.appendChild(row);
+  });
+
+  if (resetSettingsButton) {
+    resetSettingsButton.addEventListener("click", () => {
+      const updated = window.PitchFinder.resetSettings();
+      setControlsFromSettings(updated);
+    });
+  }
+}
 
 function renderRows() {
   if (!window.ClarinetVexRenderer || typeof window.ClarinetVexRenderer.renderNoteSequenceSvg !== "function") {
@@ -215,9 +295,15 @@ function stopListening() {
 }
 
 function init() {
+  buildPitchSettingsControls();
   renderRows();
   drawSlider(null, null);
   window.addEventListener("resize", renderRows);
+  window.addEventListener("clarinet:pitch-settings", (event) => {
+    if (event && event.detail) {
+      setControlsFromSettings(event.detail);
+    }
+  });
 
   bottomBar = window.BottomBar.init({
     startLabel: "Start listening",

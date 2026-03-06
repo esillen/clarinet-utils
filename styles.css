@@ -1222,6 +1222,49 @@ button:disabled {
   display: block;
 }
 
+.dev-pitch-settings {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f9fcfb;
+  padding: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.dev-pitch-settings h3 {
+  margin: 0 0 0.45rem;
+}
+
+.dev-pitch-settings-controls {
+  display: grid;
+  gap: 0.36rem;
+}
+
+.dev-setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.6rem;
+  align-items: center;
+}
+
+.dev-setting-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.dev-setting-value {
+  font-weight: 700;
+  color: #29544d;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-setting-row input[type="range"] {
+  grid-column: 1 / -1;
+}
+
+.dev-pitch-settings button {
+  margin-top: 0.55rem;
+}
+
 .dev-slider-wrap {
   border: 1px solid var(--line);
   border-radius: 10px;
